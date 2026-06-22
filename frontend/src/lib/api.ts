@@ -162,4 +162,32 @@ export const api = {
   rawUrl(id: number): string {
     return `${API_BASE}/api/files/${id}/raw`
   },
+
+  /** URL that downloads the current filtered/sorted view as a styled .xlsx. */
+  exportUrl(
+    id: number,
+    opts: {
+      q?: string
+      filters?: FilterCondition[]
+      match?: 'all' | 'any'
+      sort?: string | null
+      dir?: 'asc' | 'desc'
+      columns?: string[]
+    }
+  ): string {
+    const params = new URLSearchParams()
+    if (opts.q) params.set('q', opts.q)
+    if (opts.filters && opts.filters.length > 0) {
+      params.set('filters', JSON.stringify(opts.filters))
+      params.set('match', opts.match ?? 'all')
+    }
+    if (opts.sort) {
+      params.set('sort', opts.sort)
+      params.set('dir', opts.dir ?? 'asc')
+    }
+    if (opts.columns && opts.columns.length > 0) {
+      params.set('columns', opts.columns.join(','))
+    }
+    return `${API_BASE}/api/files/${id}/export?${params.toString()}`
+  },
 }

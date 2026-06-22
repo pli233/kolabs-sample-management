@@ -10,8 +10,9 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlmodel import select
 
-from . import parsing, storage
+from . import export, parsing, storage
 from .config import settings
+from .normalize import normalizer_for
 from .models import (
     FileRecord,
     get_active_file_id,
@@ -250,15 +251,24 @@ def _is_blank(value) -> bool:
     return value is None or _cell_text(value).strip() == ""
 
 
-def _apply_condition(value, op: str, target: str) -> bool:
-    """Evaluate one column condition against a cell value."""
+def _apply_condition(value, op: str, target: str, normalizer=None) -> bool:
+    """Evaluate one column condition against a cell value.
+
+    When ``normalizer`` is given (e.g. box/position columns), both the cell and
+    the target are normalized before text comparison so ``A1`` matches ``A01``.
+    """
     if op == "is_empty":
         return _is_blank(value)
     if op == "not_empty":
         return not _is_blank(value)
 
-    text = _cell_text(value).lower()
-    t = (target or "").lower()
+    if normalizer is not None and op not in ("gt", "lt", "gte", "lte"):
+        nv, nt = normalizer(value), normalizer(target)
+        text = (nv if nv is not None else "").lower()
+        t = (nt if nt is not None else "").lower()
+    else:
+        text = _cell_text(value).lower()
+        t = (target or "").lower()
 
     if op == "contains":
         return t in text
@@ -299,22 +309,14 @@ def _primary_sheet(record: FileRecord) -> dict:
     return sheet
 
 
-@router.get("/files/{file_id}/rows")
-def get_rows(
-    file_id: int,
-    offset: int = Query(0, ge=0),
-    limit: int = Query(200, ge=1, le=2000),
-    q: str = Query(""),
-    filters: str = Query("", description="JSON list of {column, op, value}"),
-    match: str = Query("all", pattern="^(all|any)$"),
-    sort: str | None = Query(None),
-    dir: str = Query("asc"),
-):
-    """Paginated rows of the primary sheet. Global search (``q``) plus per-column
-    structured conditions (``filters``, combined by ``match`` = all/any) are
-    applied across ALL rows server-side, then sorted and sliced."""
-    record = _get_record(file_id)
-    sheet = _primary_sheet(record)
+def _query_rows(
+    sheet: dict, q: str, filters: str, match: str, sort: str | None, dir: str
+) -> tuple[list[str], list[list], int]:
+    """Apply global search + structured filters + sort over a sheet's rows.
+
+    Returns ``(columns, filtered_sorted_rows, total)``. No pagination — callers
+    slice (rows endpoint) or take all (export).
+    """
     columns: list[str] = sheet["columns"]
     rows: list[list] = sheet["rows"]
     total = len(rows)
@@ -339,6 +341,7 @@ def get_rows(
                     _apply_condition(
                         row[col_index[c["column"]]], c.get("op", "contains"),
                         str(c.get("value", "")),
+                        normalizer_for(c["column"]),
                     )
                     for c in conditions
                 ]
@@ -346,21 +349,71 @@ def get_rows(
             return True
 
         rows = [r for r in rows if passes(r)]
-    filtered = len(rows)
 
     if sort and sort in col_index:
         ci = col_index[sort]
         rows = sorted(rows, key=lambda r: _sort_key(r[ci]), reverse=(dir == "desc"))
 
-    page = rows[offset : offset + limit]
+    return columns, rows, total
+
+
+@router.get("/files/{file_id}/rows")
+def get_rows(
+    file_id: int,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=2000),
+    q: str = Query(""),
+    filters: str = Query("", description="JSON list of {column, op, value}"),
+    match: str = Query("all", pattern="^(all|any)$"),
+    sort: str | None = Query(None),
+    dir: str = Query("asc"),
+):
+    """Paginated rows of the primary sheet. Global search (``q``) plus per-column
+    structured conditions (``filters``, combined by ``match`` = all/any) are
+    applied across ALL rows server-side, then sorted and sliced."""
+    record = _get_record(file_id)
+    sheet = _primary_sheet(record)
+    columns, rows, total = _query_rows(sheet, q, filters, match, sort, dir)
+
     return {
         "columns": columns,
         "match": sheet["match"],
         "schemaValid": sheet["schemaValid"],
         "issues": sheet["issues"],
         "total": total,
-        "filtered": filtered,
+        "filtered": len(rows),
         "offset": offset,
         "limit": limit,
-        "rows": page,
+        "rows": rows[offset : offset + limit],
     }
+
+
+@router.get("/files/{file_id}/export")
+def export_rows(
+    file_id: int,
+    q: str = Query(""),
+    filters: str = Query(""),
+    match: str = Query("all", pattern="^(all|any)$"),
+    sort: str | None = Query(None),
+    dir: str = Query("asc"),
+    columns: str = Query("", description="comma-separated column subset/order"),
+):
+    """Export the current filtered + sorted view as a styled .xlsx download."""
+    record = _get_record(file_id)
+    sheet = _primary_sheet(record)
+    all_columns, rows, _ = _query_rows(sheet, q, filters, match, sort, dir)
+
+    selected = [c for c in columns.split(",") if c in all_columns] or all_columns
+    idx = [all_columns.index(c) for c in selected]
+    out_rows = [[r[i] for i in idx] for r in rows]
+
+    data = export.build_xlsx(selected, out_rows, sheet_name=record.primary_sheet)
+    stem = Path(record.original_filename).stem
+    fname = quote(f"{stem}_export.xlsx")
+    return Response(
+        content=data,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"},
+    )

@@ -95,6 +95,11 @@ test('upload a feed, it becomes active, and the dashboard is fully featured', as
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByText(/1 of/)).toBeVisible()
 
+  // 8b. Export button is available (downloads the current view as xlsx).
+  await expect(
+    page.getByRole('button', { name: 'Export to Excel' })
+  ).toBeVisible()
+
   // 9. Data Feeds lists the upload and marks it Active.
   await page.getByRole('link', { name: 'Data Feeds' }).click()
   await expect(page.getByText(FIXTURE_NAME)).toBeVisible()

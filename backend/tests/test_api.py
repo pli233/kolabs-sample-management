@@ -139,6 +139,37 @@ def test_rows_multi_condition_any(client, sample_xlsx_path):
     assert any_count > count(low)  # OR is strictly larger than either part
 
 
+def test_rows_filter_normalizes_position(client, sample_xlsx_path):
+    import json
+
+    fid = _upload_sample(client, sample_xlsx_path).json()["id"]
+    # 'A1' must match stored 'A01' thanks to position normalization.
+    padded = json.dumps([{"column": "sample_pos", "op": "equals", "value": "A01"}])
+    short = json.dumps([{"column": "sample_pos", "op": "equals", "value": "A1"}])
+    n_padded = client.get(f"/api/files/{fid}/rows", params={"filters": padded}).json()
+    n_short = client.get(f"/api/files/{fid}/rows", params={"filters": short}).json()
+    assert n_short["filtered"] == n_padded["filtered"]
+    assert n_short["filtered"] > 0
+
+
+def test_export_returns_xlsx(client, sample_xlsx_path):
+    import io
+    from openpyxl import load_workbook
+
+    fid = _upload_sample(client, sample_xlsx_path).json()["id"]
+    resp = client.get(
+        f"/api/files/{fid}/export",
+        params={"filters": '[{"column":"record_id","op":"lte","value":"5"}]',
+                "columns": "record_id,project"},
+    )
+    assert resp.status_code == 200
+    assert "spreadsheetml" in resp.headers["content-type"]
+    wb = load_workbook(io.BytesIO(resp.content))
+    ws = wb.active
+    assert [c.value for c in ws[1]] == ["record_id", "project"]  # header + order
+    assert ws.max_row == 6  # header + 5 rows
+
+
 def test_rows_sort_by_column(client, sample_xlsx_path):
     fid = _upload_sample(client, sample_xlsx_path).json()["id"]
     desc = client.get(

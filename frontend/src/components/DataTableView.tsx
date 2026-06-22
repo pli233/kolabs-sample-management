@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ChevronsUpDown,
   Columns3,
+  Download,
   Search,
   X,
 } from 'lucide-react'
@@ -239,6 +240,21 @@ export function DataTableView({ fileId }: { fileId: number }) {
     })
   }
 
+  function handleExport() {
+    const url = api.exportUrl(fileId, {
+      q: qDebounced,
+      filters: activeFilters,
+      match: matchMode,
+      sort: sort?.col ?? null,
+      dir: sort?.dir,
+      columns: table.getVisibleLeafColumns().map((c) => c.id),
+    })
+    const a = document.createElement('a')
+    a.href = url
+    a.rel = 'noopener'
+    a.click()
+  }
+
   const headers = table.getHeaderGroups()[0].headers
   const visibleCols = table.getVisibleLeafColumns()
   const totalWidth = visibleCols.reduce((s, c) => s + c.getSize(), 0)
@@ -333,6 +349,16 @@ export function DataTableView({ fileId }: { fileId: number }) {
             onConditionsChange={setConditions}
             onMatchModeChange={setMatchMode}
           />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            aria-label="Export to Excel"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
         </div>
 
         <div className="text-sm text-muted-foreground">
