@@ -1,14 +1,18 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Boxes,
   Database,
   Dices,
   LayoutDashboard,
+  PlayCircle,
   ScanLine,
   TestTube2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/Logo'
+import { Tour } from '@/components/Tour'
+import { tourFor } from '@/lib/tours'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,6 +24,10 @@ const NAV = [
 ]
 
 export function SidebarLayout() {
+  const { pathname } = useLocation()
+  const [tourOpen, setTourOpen] = useState(false)
+  const steps = tourFor(pathname)
+
   return (
     <div className="flex min-h-full bg-background">
       <aside className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-[var(--midnight)] px-3 py-4">
@@ -53,6 +61,22 @@ export function SidebarLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Floating tour launcher (right edge) */}
+      {steps.length > 0 && (
+        <button
+          onClick={() => setTourOpen(true)}
+          aria-label="Play feature tour"
+          className="fixed right-5 top-1/2 z-50 inline-flex -translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2.5 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
+        >
+          <PlayCircle className="h-5 w-5 text-primary" />
+          Tour
+        </button>
+      )}
+
+      {tourOpen && steps.length > 0 && (
+        <Tour steps={steps} onClose={() => setTourOpen(false)} />
+      )}
     </div>
   )
 }

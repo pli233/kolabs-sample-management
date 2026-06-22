@@ -68,7 +68,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" data-tour="feed-title">
           <h1 className="truncate font-title text-xl font-semibold text-foreground">
             {active.original_filename}
           </h1>
@@ -85,7 +85,11 @@ export function DashboardPage() {
         )}
       </div>
 
-      {overview && <OverviewCharts overview={overview} />}
+      {overview && (
+        <div data-tour="overview">
+          <OverviewCharts overview={overview} />
+        </div>
+      )}
 
       <DataTableView fileId={active.id} />
     </div>

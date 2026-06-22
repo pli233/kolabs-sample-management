@@ -102,7 +102,7 @@ export function DataFeedsPage() {
         )}
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="feed-list">
         <h2 className="font-title text-lg font-semibold text-foreground">
           All feeds
         </h2>
