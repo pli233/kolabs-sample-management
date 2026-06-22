@@ -13,6 +13,7 @@ from sqlmodel import select
 from . import export, parsing, storage
 from .config import settings
 from .normalize import normalizer_for
+from .tools import box_lookup
 from .models import (
     FileRecord,
     get_active_file_id,
@@ -293,6 +294,31 @@ def _apply_condition(value, op: str, target: str, normalizer=None) -> bool:
     return True
 
 
+def _active_record() -> FileRecord:
+    """The active data feed's record, or 404 if none is set."""
+    file_id = get_active_file_id()
+    record = None
+    if file_id is not None:
+        with get_session() as session:
+            record = session.get(FileRecord, file_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No active data feed")
+    return record
+
+
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _xlsx_response(columns: list[str], rows: list[list], filename: str) -> Response:
+    data = export.build_xlsx(columns, rows, sheet_name=filename)
+    fname = quote(f"{filename}.xlsx")
+    return Response(
+        content=data,
+        media_type=_XLSX_MIME,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"},
+    )
+
+
 def _primary_sheet(record: FileRecord) -> dict:
     try:
         parsed = storage.load_parsed(record.cache_path)
@@ -386,6 +412,21 @@ def get_rows(
         "limit": limit,
         "rows": rows[offset : offset + limit],
     }
+
+
+@router.get("/box-lookup")
+def box_lookup_route(
+    box: str = Query(..., min_length=1),
+    format: str = Query("json", pattern="^(json|xlsx)$"),
+):
+    """Legacy search_box_number: locations + example tubes for a box number,
+    against the active feed."""
+    sheet = _primary_sheet(_active_record())
+    result = box_lookup.lookup_box(sheet, box)
+    if format == "xlsx":
+        columns, rows = box_lookup.to_table(result)
+        return _xlsx_response(columns, rows, f"box_{result['box']}_lookup")
+    return result
 
 
 @router.get("/files/{file_id}/export")

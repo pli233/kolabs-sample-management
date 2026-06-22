@@ -81,6 +81,19 @@ export interface UploadResult extends FileMeta {
   sheets: SheetChoice[]
 }
 
+export interface BoxLocation {
+  location: Record<string, Cell>
+  count: number
+  examples: Record<string, Cell>[]
+}
+
+export interface BoxLookupResult {
+  box: string
+  locationColumns: string[]
+  exampleColumns: string[]
+  locations: BoxLocation[]
+}
+
 async function handle<T>(resp: Response): Promise<T> {
   if (!resp.ok) {
     let detail = `Request failed (${resp.status})`
@@ -118,6 +131,16 @@ export const api = {
     return handle<{ active: FileMeta | null }>(
       await fetch(`${API_BASE}/api/active-feed`)
     )
+  },
+
+  async boxLookup(box: string): Promise<BoxLookupResult> {
+    return handle<BoxLookupResult>(
+      await fetch(`${API_BASE}/api/box-lookup?box=${encodeURIComponent(box)}`)
+    )
+  },
+
+  boxLookupExportUrl(box: string): string {
+    return `${API_BASE}/api/box-lookup?format=xlsx&box=${encodeURIComponent(box)}`
   },
 
   async setActiveFeed(id: number): Promise<FileMeta> {

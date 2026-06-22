@@ -5,6 +5,7 @@ import './index.css'
 import { SidebarLayout } from './App'
 import { DataFeedsPage } from './pages/DataFeedsPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { BoxLookupPage } from './pages/BoxLookupPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<SidebarLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/box-lookup" element={<BoxLookupPage />} />
           <Route path="/feeds" element={<DataFeedsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
