@@ -43,9 +43,41 @@ class FileRecord(SQLModel, table=True):
     )
 
 
+class AppSetting(SQLModel, table=True):
+    """Tiny key/value store for app-wide singletons (e.g. the active feed)."""
+
+    key: str = Field(primary_key=True)
+    value: str
+
+
+_ACTIVE_FEED_KEY = "active_file_id"
+
+
 def init_db() -> None:
     SQLModel.metadata.create_all(get_engine())
 
 
 def get_session() -> Session:
     return Session(get_engine())
+
+
+def get_active_file_id() -> int | None:
+    with get_session() as session:
+        setting = session.get(AppSetting, _ACTIVE_FEED_KEY)
+        if setting is None or not setting.value:
+            return None
+        try:
+            return int(setting.value)
+        except ValueError:
+            return None
+
+
+def set_active_file_id(file_id: int) -> None:
+    with get_session() as session:
+        setting = session.get(AppSetting, _ACTIVE_FEED_KEY)
+        if setting is None:
+            setting = AppSetting(key=_ACTIVE_FEED_KEY, value=str(file_id))
+        else:
+            setting.value = str(file_id)
+        session.add(setting)
+        session.commit()

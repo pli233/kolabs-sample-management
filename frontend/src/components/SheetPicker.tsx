@@ -31,11 +31,12 @@ export function SheetPicker({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl">
         <h2 className="font-title text-lg font-semibold text-foreground">
-          选择要查看的工作表
+          Choose the primary sheet
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{filename}</span>{' '}
-          含多个工作表。请选择一个作为主数据表 —— 只展示并校验这一个,文件的匹配状态与后续数据库更新都以它为准。
+          <span className="font-medium text-foreground">{filename}</span> has
+          multiple sheets. Pick the one to use as the data source — only this sheet
+          is shown and validated.
         </p>
 
         <ul className="mt-4 max-h-[50vh] space-y-2 overflow-auto">
@@ -69,7 +70,7 @@ export function SheetPicker({
                       {s.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {s.rowCount.toLocaleString('zh-CN')} 行 · {s.columnCount} 列
+                      {s.rowCount.toLocaleString()} rows · {s.columnCount} cols
                     </span>
                   </span>
                   <span
@@ -85,7 +86,7 @@ export function SheetPicker({
 
         <div className="mt-6 flex justify-end">
           <Button onClick={() => onConfirm(selected)} disabled={busy || !selected}>
-            {busy ? '处理中…' : '确认并查看'}
+            {busy ? 'Working…' : 'Confirm'}
           </Button>
         </div>
       </div>

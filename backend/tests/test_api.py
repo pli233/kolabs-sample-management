@@ -165,6 +165,29 @@ def test_reject_unsupported_type(client):
     assert resp.status_code == 415
 
 
+def test_upload_sets_active_feed(client, sample_xlsx_path):
+    assert client.get("/api/active-feed").json()["active"] is None
+    up = _upload_sample(client, sample_xlsx_path).json()
+    active = client.get("/api/active-feed").json()["active"]
+    assert active is not None
+    assert active["id"] == up["id"]
+
+
+def test_set_active_feed_switches(client, sample_xlsx_path):
+    a = _upload_sample(client, sample_xlsx_path).json()
+    b = _upload_sample(client, sample_xlsx_path).json()
+    # The most recent upload is active.
+    assert client.get("/api/active-feed").json()["active"]["id"] == b["id"]
+    # Switch back to the first feed.
+    resp = client.put("/api/active-feed", json={"file_id": a["id"]})
+    assert resp.status_code == 200
+    assert client.get("/api/active-feed").json()["active"]["id"] == a["id"]
+
+
+def test_set_active_feed_missing_404(client):
+    assert client.put("/api/active-feed", json={"file_id": 9999}).status_code == 404
+
+
 def test_missing_file_404(client):
     assert client.get("/api/files/9999").status_code == 404
     assert client.get("/api/files/9999/raw").status_code == 404

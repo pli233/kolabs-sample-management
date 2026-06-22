@@ -28,7 +28,7 @@ export function Dropzone({ onFile, disabled }: DropzoneProps) {
   )
 
   const onDropRejected = useCallback(() => {
-    setError('仅支持 .xlsx / .xls / .csv 文件')
+    setError('Only .xlsx / .xls / .csv files are supported')
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -52,13 +52,13 @@ export function Dropzone({ onFile, disabled }: DropzoneProps) {
           disabled && 'pointer-events-none opacity-60'
         )}
       >
-        <input {...getInputProps()} aria-label="上传文件" />
+        <input {...getInputProps()} aria-label="Upload file" />
         <UploadCloud className="h-10 w-10 text-primary" />
         <div className="font-title text-base font-semibold text-foreground">
-          {disabled ? '上传中…' : '拖拽文件到这里,或点击选择'}
+          {disabled ? 'Uploading…' : 'Drag a file here, or click to choose'}
         </div>
         <div className="text-sm text-muted-foreground">
-          支持 .xlsx / .xls / .csv,单文件最大 50MB
+          .xlsx / .xls / .csv · up to 50 MB
         </div>
       </div>
       {error && (

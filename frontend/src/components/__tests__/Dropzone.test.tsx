@@ -10,7 +10,7 @@ describe('Dropzone', () => {
   it('accepts an xlsx file and calls onFile', async () => {
     const onFile = vi.fn()
     render(<Dropzone onFile={onFile} />)
-    const input = screen.getByLabelText('上传文件') as HTMLInputElement
+    const input = screen.getByLabelText('Upload file') as HTMLInputElement
     const file = makeFile(
       'data.xlsx',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -23,12 +23,12 @@ describe('Dropzone', () => {
   it('rejects an unsupported type and shows an error', async () => {
     const onFile = vi.fn()
     render(<Dropzone onFile={onFile} />)
-    const input = screen.getByLabelText('上传文件') as HTMLInputElement
+    const input = screen.getByLabelText('Upload file') as HTMLInputElement
     fireEvent.change(input, {
       target: { files: [makeFile('notes.txt', 'text/plain')] },
     })
     await waitFor(() =>
-      expect(screen.getByText(/仅支持/)).toBeInTheDocument()
+      expect(screen.getByText(/Only/)).toBeInTheDocument()
     )
     expect(onFile).not.toHaveBeenCalled()
   })

@@ -83,7 +83,7 @@ export interface UploadResult extends FileMeta {
 
 async function handle<T>(resp: Response): Promise<T> {
   if (!resp.ok) {
-    let detail = `请求失败 (${resp.status})`
+    let detail = `Request failed (${resp.status})`
     try {
       const body = await resp.json()
       if (body?.detail) detail = body.detail
@@ -112,6 +112,22 @@ export const api = {
 
   async getMeta(id: number): Promise<FileMeta> {
     return handle<FileMeta>(await fetch(`${API_BASE}/api/files/${id}`))
+  },
+
+  async getActiveFeed(): Promise<{ active: FileMeta | null }> {
+    return handle<{ active: FileMeta | null }>(
+      await fetch(`${API_BASE}/api/active-feed`)
+    )
+  },
+
+  async setActiveFeed(id: number): Promise<FileMeta> {
+    return handle<FileMeta>(
+      await fetch(`${API_BASE}/api/active-feed`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_id: id }),
+      })
+    )
   },
 
   async setPrimarySheet(id: number, primarySheet: string): Promise<FileMeta> {

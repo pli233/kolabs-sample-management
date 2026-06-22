@@ -65,7 +65,7 @@ const EMPTY_DATA: Cell[][] = []
 
 function renderCell(value: Cell): string {
   if (value === null || value === undefined) return ''
-  if (typeof value === 'boolean') return value ? '是' : '否'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   return String(value)
 }
 
@@ -227,7 +227,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
     )
   }
   if (!meta) {
-    return <p className="text-sm text-muted-foreground">正在载入数据…</p>
+    return <p className="text-sm text-muted-foreground">Loading data…</p>
   }
 
   function toggleSort(colId: string) {
@@ -257,14 +257,14 @@ export function DataTableView({ fileId }: { fileId: number }) {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="搜索所有列(全表)…"
-              aria-label="搜索"
+              placeholder="Search all columns…"
+              aria-label="Search"
               className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-9 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {q && (
               <button
                 onClick={() => setQ('')}
-                aria-label="清除搜索"
+                aria-label="Clear search"
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
               >
                 <X className="h-4 w-4" />
@@ -278,10 +278,10 @@ export function DataTableView({ fileId }: { fileId: number }) {
               variant="outline"
               size="sm"
               onClick={() => setColMenuOpen((o) => !o)}
-              aria-label="选择展示的列"
+              aria-label="Choose visible columns"
             >
               <Columns3 className="h-4 w-4" />
-              列 ({visibleCount}/{allCols.length})
+              Columns ({visibleCount}/{allCols.length})
             </Button>
             {colMenuOpen && (
               <>
@@ -292,7 +292,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
                 />
                 <div className="absolute left-0 z-30 mt-1 max-h-80 w-60 overflow-auto rounded-md border border-border bg-card p-1 shadow-lg">
                   <div className="flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground">
-                    <span>显示的列</span>
+                    <span>Visible columns</span>
                     <button
                       className="hover:text-foreground"
                       onClick={() =>
@@ -303,7 +303,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
                         )
                       }
                     >
-                      重置
+                      Reset
                     </button>
                   </div>
                   {allCols.map((col) => (
@@ -337,8 +337,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
         <div className="text-sm text-muted-foreground">
           {(qDebounced || activeFilters.length > 0) &&
-            `匹配 ${filtered.toLocaleString('zh-CN')} / `}
-          共 {total.toLocaleString('zh-CN')} 行 · {visibleCount} 列
+            `${filtered.toLocaleString()} of `}
+          {total.toLocaleString()} rows · {visibleCount} cols
         </div>
       </div>
 
@@ -346,7 +346,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-muted-foreground">
-            {matchMode === 'all' ? '同时满足:' : '满足任一:'}
+            {matchMode === 'all' ? 'Match all:' : 'Match any:'}
           </span>
           {conditions.map((c, i) =>
             isActive(c) ? (
@@ -363,7 +363,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
                   onClick={() =>
                     setConditions(conditions.filter((_, idx) => idx !== i))
                   }
-                  aria-label="移除筛选"
+                  aria-label="Remove filter"
                   className="rounded-full text-muted-foreground hover:text-[var(--destructive)]"
                 >
                   <X className="h-3 w-3" />
@@ -461,7 +461,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
                     })
                   ) : (
                     <div className="px-3 py-2 text-sm text-muted-foreground/60">
-                      载入中…
+                      Loading…
                     </div>
                   )}
                 </div>
@@ -471,7 +471,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
           {filtered === 0 && (
             <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              没有匹配「{qDebounced}」的行
+              No rows match “{qDebounced}”
             </div>
           )}
         </div>

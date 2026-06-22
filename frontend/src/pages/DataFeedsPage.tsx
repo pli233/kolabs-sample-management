@@ -1,23 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dropzone } from '@/components/Dropzone'
-import { RecentFiles } from '@/components/RecentFiles'
+import { FeedList } from '@/components/FeedList'
 import { SheetPicker } from '@/components/SheetPicker'
 import { api, type FileMeta, type UploadResult } from '@/lib/api'
 
-export function UploadPage() {
+export function DataFeedsPage() {
   const navigate = useNavigate()
   const [files, setFiles] = useState<FileMeta[]>([])
+  const [activeId, setActiveId] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // When a multi-sheet workbook is uploaded, hold the result and prompt the
-  // user to pick the primary sheet before entering the viewer.
+  // Multi-sheet uploads pause here to let the user pick the primary sheet.
   const [pending, setPending] = useState<UploadResult | null>(null)
   const [savingPrimary, setSavingPrimary] = useState(false)
 
-  useEffect(() => {
-    api.listFiles().then(setFiles).catch((e) => setError(e.message))
+  const refresh = useCallback(async () => {
+    const [list, feed] = await Promise.all([
+      api.listFiles(),
+      api.getActiveFeed(),
+    ])
+    setFiles(list)
+    setActiveId(feed.active?.id ?? null)
   }, [])
+
+  useEffect(() => {
+    refresh().catch((e) => setError((e as Error).message))
+  }, [refresh])
 
   async function handleFile(file: File) {
     setUploading(true)
@@ -25,10 +34,10 @@ export function UploadPage() {
     try {
       const result = await api.uploadFile(file)
       if (result.sheets.length > 1) {
-        setPending(result) // ask which sheet is primary
+        setPending(result) // upload already made it active; pick its primary sheet
         setUploading(false)
       } else {
-        navigate(`/files/${result.id}`)
+        navigate('/dashboard')
       }
     } catch (e) {
       setError((e as Error).message)
@@ -43,10 +52,20 @@ export function UploadPage() {
       if (sheetName !== pending.primary_sheet) {
         await api.setPrimarySheet(pending.id, sheetName)
       }
-      navigate(`/files/${pending.id}`)
+      navigate('/dashboard')
     } catch (e) {
       setError((e as Error).message)
       setSavingPrimary(false)
+    }
+  }
+
+  async function setActive(id: number) {
+    setError(null)
+    try {
+      await api.setActiveFeed(id)
+      navigate('/dashboard')
+    } catch (e) {
+      setError((e as Error).message)
     }
   }
 
@@ -55,10 +74,11 @@ export function UploadPage() {
       <section className="space-y-4">
         <div>
           <h1 className="font-title text-2xl font-semibold text-foreground">
-            上传样本库文件
+            Data Feeds
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            上传后可在「Excel 原样式」与「优化表格」两种视角间切换查看。多工作表文件会让你先选定主数据表。
+            Upload an Excel/CSV file to use as the system's data source. The newest
+            upload becomes the active feed; the Dashboard runs against it.
           </p>
         </div>
         <Dropzone onFile={handleFile} disabled={uploading} />
@@ -71,9 +91,9 @@ export function UploadPage() {
 
       <section className="space-y-3">
         <h2 className="font-title text-lg font-semibold text-foreground">
-          最近上传
+          All feeds
         </h2>
-        <RecentFiles files={files} />
+        <FeedList files={files} activeId={activeId} onSetActive={setActive} />
       </section>
 
       {pending && (

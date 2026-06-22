@@ -50,24 +50,24 @@ describe('DataTableView (server-paginated)', () => {
   it('loads the first page and shows headers + total', async () => {
     render(<DataTableView fileId={1} />)
     expect(await screen.findByText('record_id')).toBeInTheDocument()
-    expect(screen.getByText(/共 2 行/)).toBeInTheDocument()
+    expect(screen.getByText(/2 rows/)).toBeInTheDocument()
   })
 
   it('debounced search re-queries the backend and shows the match count', async () => {
     render(<DataTableView fileId={1} />)
     await screen.findByText('record_id')
-    fireEvent.change(screen.getByLabelText('搜索'), { target: { value: 'Plasma' } })
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'Plasma' } })
     await waitFor(() =>
       expect(getRows).toHaveBeenCalledWith(1, expect.objectContaining({ q: 'Plasma' }))
     )
-    expect(await screen.findByText(/匹配 1/)).toBeInTheDocument()
+    expect(await screen.findByText(/1 of/)).toBeInTheDocument()
   })
 
   it('shows an empty state when nothing matches', async () => {
     render(<DataTableView fileId={1} />)
     await screen.findByText('record_id')
-    fireEvent.change(screen.getByLabelText('搜索'), { target: { value: 'zzz' } })
-    expect(await screen.findByText(/没有匹配/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
+    expect(await screen.findByText(/No rows match/)).toBeInTheDocument()
   })
 
   it('clicking a header requests a server-side sort', async () => {
@@ -85,9 +85,9 @@ describe('DataTableView (server-paginated)', () => {
   it('adding a per-column filter queries with structured conditions', async () => {
     render(<DataTableView fileId={1} />)
     await screen.findByText('record_id')
-    fireEvent.click(screen.getByRole('button', { name: '按列筛选' }))
-    fireEvent.click(screen.getByRole('button', { name: /添加条件/ }))
-    fireEvent.change(screen.getByLabelText('筛选值'), { target: { value: 'L37' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by column' }))
+    fireEvent.click(screen.getByRole('button', { name: /Add condition/ }))
+    fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'L37' } })
     await waitFor(() =>
       expect(getRows).toHaveBeenCalledWith(
         1,
@@ -110,7 +110,7 @@ describe('DataTableView (server-paginated)', () => {
       })
     )
     render(<DataTableView fileId={1} />)
-    expect(await screen.findByText(/不符/)).toBeInTheDocument()
+    expect(await screen.findByText(/columns differ/)).toBeInTheDocument()
     expect(screen.getByText('volume_ul')).toBeInTheDocument()
   })
 })

@@ -1,22 +1,47 @@
-import { Link, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
+import { Database, LayoutDashboard } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export function AppLayout() {
+const NAV = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/feeds', label: 'Data Feeds', icon: Database },
+]
+
+export function SidebarLayout() {
   return (
-    <div className="min-h-full bg-background">
-      <header className="border-b border-border bg-[var(--midnight)]">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-primary font-title text-sm font-bold text-primary-foreground">
-              K
-            </span>
-            <span className="font-title text-lg font-semibold text-white">
-              Kolabs 样本库管理
-            </span>
-          </Link>
+    <div className="flex min-h-full bg-background">
+      <aside className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-[var(--midnight)] px-3 py-4">
+        <div className="mb-4 flex items-center gap-2 px-2">
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-primary font-title text-sm font-bold text-primary-foreground">
+            K
+          </span>
+          <span className="font-title text-base font-semibold text-white">
+            Kolabs
+          </span>
         </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <Outlet />
+        {NAV.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+              )
+            }
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </NavLink>
+        ))}
+      </aside>
+
+      <main className="min-w-0 flex-1 px-6 py-8">
+        <div className="mx-auto max-w-6xl">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

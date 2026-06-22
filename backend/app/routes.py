@@ -12,7 +12,12 @@ from sqlmodel import select
 
 from . import parsing, storage
 from .config import settings
-from .models import FileRecord, get_session
+from .models import (
+    FileRecord,
+    get_active_file_id,
+    get_session,
+    set_active_file_id,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -66,21 +71,21 @@ async def upload_file(file: UploadFile):
     if ext not in settings.ALLOWED_EXT:
         raise HTTPException(
             status_code=415,
-            detail="仅支持 xlsx/xls/csv",
+            detail="Only .xlsx / .xls / .csv files are supported",
         )
 
     data = await file.read()
     if len(data) > settings.MAX_FILE_BYTES:
-        raise HTTPException(status_code=413, detail="文件超过 50MB 上限")
+        raise HTTPException(status_code=413, detail="File exceeds the 50 MB limit")
     if len(data) == 0:
-        raise HTTPException(status_code=422, detail="空文件")
+        raise HTTPException(status_code=422, detail="Empty file")
 
     stored_path = storage.save_upload(file.filename or f"upload{ext}", data)
 
     try:
         sheets = parsing.parse_file(stored_path, ext)
     except Exception as exc:  # noqa: BLE001 - surface a readable parse error
-        raise HTTPException(status_code=422, detail=f"无法解析文件: {exc}") from exc
+        raise HTTPException(status_code=422, detail=f"Could not parse file: {exc}") from exc
 
     cache_path = storage.save_parsed(stored_path, sheets)
 
@@ -103,6 +108,9 @@ async def upload_file(file: UploadFile):
         session.add(record)
         session.commit()
         session.refresh(record)
+
+    # A newly uploaded feed becomes the active data feed.
+    set_active_file_id(record.id)
 
     # The frontend shows a sheet picker when there's more than one sheet,
     # pre-selecting `primary_sheet`. Single-sheet files skip the picker.
@@ -134,11 +142,36 @@ def list_files():
         return [_record_to_meta(r) for r in records]
 
 
+class ActiveFeedUpdate(BaseModel):
+    file_id: int
+
+
+@router.get("/active-feed")
+def get_active_feed():
+    """The data feed that the dashboard and all queries run against."""
+    file_id = get_active_file_id()
+    if file_id is None:
+        return {"active": None}
+    with get_session() as session:
+        record = session.get(FileRecord, file_id)
+    return {"active": _record_to_meta(record) if record else None}
+
+
+@router.put("/active-feed")
+def set_active_feed(payload: ActiveFeedUpdate):
+    with get_session() as session:
+        record = session.get(FileRecord, payload.file_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    set_active_file_id(record.id)
+    return _record_to_meta(record)
+
+
 def _get_record(file_id: int) -> FileRecord:
     with get_session() as session:
         record = session.get(FileRecord, file_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="File not found")
     return record
 
 
@@ -156,7 +189,7 @@ def set_primary_sheet(file_id: int, payload: PrimarySheetUpdate):
         (s for s in parsed["sheets"] if s["name"] == payload.primary_sheet), None
     )
     if sheet is None:
-        raise HTTPException(status_code=400, detail="该工作表不存在")
+        raise HTTPException(status_code=400, detail="Sheet not found")
 
     with get_session() as session:
         record = session.get(FileRecord, file_id)
@@ -183,9 +216,9 @@ def _cell_text(value) -> str:
     if value is None:
         return ""
     if value is True:
-        return "是"
+        return "Yes"
     if value is False:
-        return "否"
+        return "No"
     return str(value)
 
 
@@ -194,7 +227,7 @@ def _sort_key(value):
     if value is None:
         return (2, 0.0, "")
     if isinstance(value, bool):
-        return (1, 0.0, "是" if value else "否")
+        return (1, 0.0, "Yes" if value else "No")
     if isinstance(value, (int, float)):
         return (0, float(value), "")
     return (1, 0.0, str(value).lower())
@@ -262,7 +295,7 @@ def _primary_sheet(record: FileRecord) -> dict:
         sheets[0] if sheets else None,
     )
     if sheet is None:
-        raise HTTPException(status_code=422, detail="文件没有可展示的工作表")
+        raise HTTPException(status_code=422, detail="File has no displayable sheet")
     return sheet
 
 
@@ -293,7 +326,7 @@ def get_rows(
             parsed = json.loads(filters)
             conditions = [c for c in parsed if c.get("column") in col_index]
         except (ValueError, AttributeError, TypeError) as exc:
-            raise HTTPException(status_code=400, detail="filters 参数格式错误") from exc
+            raise HTTPException(status_code=400, detail="Invalid filters parameter") from exc
 
     if q or conditions:
         needle = q.lower()

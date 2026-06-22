@@ -2,24 +2,18 @@ import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-// Playwright runs from the frontend/ dir (config location), so resolve from cwd
-// to stay agnostic to ESM/CJS __dirname availability.
 const FIXTURE = path.resolve(process.cwd(), 'e2e/fixtures/sample-main-library.xlsx')
 const FIXTURE_NAME = 'sample-main-library.xlsx'
 const XLSX_MIME =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-/**
- * Simulate a real drag-and-drop of a file onto a dropzone by building a
- * DataTransfer in the page and dispatching dragenter + drop events.
- */
+/** Simulate a real drag-and-drop of a file onto the dropzone. */
 async function dragFileOnto(page: Page, selector: string) {
   const buffer = readFileSync(FIXTURE)
   const dataTransfer = await page.evaluateHandle(
     ({ data, name, type }) => {
       const dt = new DataTransfer()
-      const file = new File([new Uint8Array(data)], name, { type })
-      dt.items.add(file)
+      dt.items.add(new File([new Uint8Array(data)], name, { type }))
       return dt
     },
     { data: Array.from(buffer), name: FIXTURE_NAME, type: XLSX_MIME }
@@ -28,48 +22,45 @@ async function dragFileOnto(page: Page, selector: string) {
   await page.dispatchEvent(selector, 'drop', { dataTransfer })
 }
 
-test('user drags a file in, picks a sheet, then searches and sorts the table', async ({
+test('upload a feed, it becomes active, and the dashboard is fully featured', async ({
   page,
 }) => {
-  // 1. Land on the upload page.
+  // 1. "/" redirects to the Dashboard; with no feed it shows an empty state.
   await page.goto('/')
+  await expect(page).toHaveURL(/\/dashboard$/)
   await expect(
-    page.getByRole('heading', { name: '上传样本库文件' })
+    page.getByRole('heading', { name: 'No active data feed' })
   ).toBeVisible()
 
-  // 2. Drag the multi-sheet workbook onto the drive-box dropzone.
+  // 2. Go to Data Feeds via the sidebar and drag a multi-sheet workbook in.
+  await page.getByRole('link', { name: 'Data Feeds' }).click()
+  await expect(page).toHaveURL(/\/feeds$/)
   await dragFileOnto(page, '[data-testid="dropzone"]')
 
-  // 3. A sheet picker appears (2 sheets); pick the matched main sheet.
+  // 3. A sheet picker appears; pick the matched main sheet.
   await expect(
-    page.getByRole('heading', { name: '选择要查看的工作表' })
+    page.getByRole('heading', { name: 'Choose the primary sheet' })
   ).toBeVisible()
-  await expect(page.getByText('符合主库')).toBeVisible()
-  await page.getByRole('button', { name: '确认并查看' }).click()
+  await expect(page.getByText('Matches schema')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm' }).click()
 
-  // 4. Viewer shows only the chosen sheet; matched -> green badge.
-  await expect(page).toHaveURL(/\/files\/\d+$/)
-  await expect(page.getByText('主表符合')).toBeVisible()
-  await expect(page.getByText('正在查看工作表:「MainLib」')).toBeVisible()
-  // No Excel view, no other-sheet tabs.
-  await expect(page.getByText('Excel 原样式')).toHaveCount(0)
-  await expect(page.getByText('Aux', { exact: true })).toHaveCount(0)
+  // 4. We land on the Dashboard showing the now-active feed.
+  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page.getByRole('heading', { name: FIXTURE_NAME })).toBeVisible()
+  await expect(page.getByText('Schema OK')).toBeVisible()
+  await expect(page.getByText(/Active feed · sheet/)).toBeVisible()
 
   // 5. Table renders with the default column subset (12 of 43).
   await expect(page.getByText('record_id')).toBeVisible()
-  await expect(page.getByText(/共 3 行 · 12 列/)).toBeVisible()
+  await expect(page.getByText(/3 rows · 12 cols/)).toBeVisible()
 
-  // 5a. Column menu: toggle a hidden column on -> count grows to 13.
-  await page.getByRole('button', { name: '选择展示的列' }).click()
-  await page
-    .locator('label', { hasText: /^type$/ })
-    .getByRole('checkbox')
-    .check()
-  await expect(page.getByText(/· 13 列/)).toBeVisible()
-  await page.keyboard.press('Escape').catch(() => {})
-  await page.mouse.click(5, 5) // close the menu via the backdrop
+  // 5a. Column menu: toggle a hidden column on -> 13 cols.
+  await page.getByRole('button', { name: 'Choose visible columns' }).click()
+  await page.locator('label', { hasText: /^type$/ }).getByRole('checkbox').check()
+  await expect(page.getByText(/· 13 cols/)).toBeVisible()
+  await page.mouse.click(600, 600) // click the backdrop to close the menu
 
-  // 5b. Column resizing: drag the record_id resize handle and confirm it widens.
+  // 5b. Column resizing: drag record_id wider.
   const headerCell = page.getByTestId('col-record_id')
   const before = (await headerCell.boundingBox())!.width
   const handle = page.getByTestId('resize-record_id')
@@ -78,53 +69,47 @@ test('user drags a file in, picks a sheet, then searches and sorts the table', a
   await page.mouse.down()
   await page.mouse.move(hb.x + 120, hb.y + hb.height / 2, { steps: 6 })
   await page.mouse.up()
-  const after = (await headerCell.boundingBox())!.width
-  expect(after).toBeGreaterThan(before + 60)
+  expect((await headerCell.boundingBox())!.width).toBeGreaterThan(before + 60)
 
-  // 6. Global search (server-side, across all rows) filters to the match.
-  await page.getByLabel('搜索').fill('NUIU972937')
-  await expect(page.getByText(/匹配 1/)).toBeVisible()
+  // 6. Global search (server-side).
+  await page.getByLabel('Search').fill('NUIU972937')
+  await expect(page.getByText(/1 of/)).toBeVisible()
   await expect(page.getByText('NUIU972937')).toBeVisible()
-  await page.getByLabel('清除搜索').click()
-  await expect(page.getByText(/共 3 行/)).toBeVisible()
+  await page.getByLabel('Clear search').click()
+  await expect(page.getByText(/3 rows/)).toBeVisible()
 
-  // 7. Sort by record_id descending (asc on first click, desc on second):
-  // the highest id, which is the project-L38 row, moves to the top.
+  // 7. Sort by record_id descending -> the L38 row moves to the top.
   const header = page.getByRole('button', { name: /record_id/ })
-  await header.click() // asc
-  await header.click() // desc
-  const firstRow = page.locator('div[style*="translateY(0px)"]').first()
-  await expect(firstRow).toContainText('L38')
-
-  // 7c. Per-column filter: project equals L38 -> exactly 1 row.
-  await page.getByRole('button', { name: '按列筛选' }).click()
-  await page.getByRole('button', { name: /添加条件/ }).click()
-  await page.getByLabel('筛选列').selectOption('project')
-  await page.getByLabel('运算符').selectOption('equals')
-  await page.getByLabel('筛选值').fill('L38')
-  await page.getByRole('button', { name: '完成' }).click()
-  await expect(page.getByText(/匹配 1/)).toBeVisible()
-
-  // 8. Back on the upload page the file is badged as matched.
-  await page.getByRole('link', { name: /返回上传/ }).click()
+  await header.click()
+  await header.click()
   await expect(
-    page.getByRole('link', { name: new RegExp(FIXTURE_NAME) })
-  ).toBeVisible()
-  await expect(page.getByText('主表符合')).toBeVisible()
+    page.locator('div[style*="translateY(0px)"]').first()
+  ).toContainText('L38')
+
+  // 8. Per-column filter: project equals L38 -> exactly 1 row.
+  await page.getByRole('button', { name: 'Filter by column' }).click()
+  await page.getByRole('button', { name: /Add condition/ }).click()
+  await page.getByLabel('Filter column').selectOption('project')
+  await page.getByLabel('Operator').selectOption('equals')
+  await page.getByLabel('Filter value').fill('L38')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByText(/1 of/)).toBeVisible()
+
+  // 9. Data Feeds lists the upload and marks it Active.
+  await page.getByRole('link', { name: 'Data Feeds' }).click()
+  await expect(page.getByText(FIXTURE_NAME)).toBeVisible()
+  await expect(page.getByText('Active', { exact: true })).toBeVisible()
 })
 
 test('rejects an unsupported file type at the dropzone', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/feeds')
   const dataTransfer = await page.evaluateHandle(() => {
     const dt = new DataTransfer()
     dt.items.add(new File(['hello'], 'notes.txt', { type: 'text/plain' }))
     return dt
   })
-  await page.dispatchEvent('[data-testid="dropzone"]', 'dragenter', {
-    dataTransfer,
-  })
+  await page.dispatchEvent('[data-testid="dropzone"]', 'dragenter', { dataTransfer })
   await page.dispatchEvent('[data-testid="dropzone"]', 'drop', { dataTransfer })
-
-  await expect(page.getByText(/仅支持/)).toBeVisible()
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByText(/Only/)).toBeVisible()
+  await expect(page).toHaveURL(/\/feeds$/)
 })
