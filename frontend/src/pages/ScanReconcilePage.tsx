@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { DataTable } from '@/components/DataTable'
 
 const CATEGORIES: { key: keyof ScanResult; label: string }[] = [
   { key: 'scan_not_in_database', label: 'Scanned, not in database' },
@@ -11,43 +12,15 @@ const CATEGORIES: { key: keyof ScanResult; label: string }[] = [
   { key: 'duplicate_scan_tubecodes', label: 'Duplicate scan codes' },
 ]
 
-function show(v: Cell): string {
-  if (v === null || v === undefined || v === '') return ''
-  return String(v)
-}
-
-function DynTable({ rows }: { rows: ScanRow[] }) {
-  if (rows.length === 0) return null
-  const columns = Array.from(rows.reduce((set, r) => {
-    Object.keys(r).forEach((k) => set.add(k))
-    return set
-  }, new Set<string>()))
-  return (
-    <div className="overflow-auto rounded-lg border border-border bg-card">
-      <table className="w-full text-sm">
-        <thead className="bg-muted text-left">
-          <tr>
-            {columns.map((c) => (
-              <th key={c} className="whitespace-nowrap px-3 py-2 font-title text-xs font-semibold text-foreground">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-border/60">
-              {columns.map((c) => (
-                <td key={c} className="whitespace-nowrap px-3 py-1.5 text-foreground">
-                  {show(r[c])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+/** Flatten a list of records to (columns, rows) via the union of keys. */
+function toTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
+  const columns = Array.from(
+    rows.reduce((set, r) => {
+      Object.keys(r).forEach((k) => set.add(k))
+      return set
+    }, new Set<string>())
   )
+  return { columns, rows: rows.map((r) => columns.map((c) => r[c])) }
 }
 
 export function ScanReconcilePage() {
@@ -148,20 +121,20 @@ export function ScanReconcilePage() {
               <h2 className="font-title text-sm font-semibold text-foreground">
                 Scan files
               </h2>
-              <DynTable rows={result.fileSummary} />
+              <DataTable {...toTable(result.fileSummary)} searchable={false} maxHeight="40vh" />
             </section>
           )}
 
           {CATEGORIES.map(({ key, label }) => {
-            const rows = result[key] as ScanRow[]
-            if (rows.length === 0) return null
+            const catRows = result[key] as ScanRow[]
+            if (catRows.length === 0) return null
             return (
               <section key={key} className="space-y-2">
                 <h2 className="font-title text-sm font-semibold text-foreground">
                   {label}{' '}
-                  <span className="text-muted-foreground">({rows.length})</span>
+                  <span className="text-muted-foreground">({catRows.length})</span>
                 </h2>
-                <DynTable rows={rows} />
+                <DataTable {...toTable(catRows)} maxHeight="48vh" />
               </section>
             )
           })}

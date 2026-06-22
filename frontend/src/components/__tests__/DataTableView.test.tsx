@@ -53,23 +53,6 @@ describe('DataTableView (server-paginated)', () => {
     expect(screen.getByText(/2 rows/)).toBeInTheDocument()
   })
 
-  it('debounced search re-queries the backend and shows the match count', async () => {
-    render(<DataTableView fileId={1} />)
-    await screen.findByText('record_id')
-    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'Plasma' } })
-    await waitFor(() =>
-      expect(getRows).toHaveBeenCalledWith(1, expect.objectContaining({ q: 'Plasma' }))
-    )
-    expect(await screen.findByText(/1 of/)).toBeInTheDocument()
-  })
-
-  it('shows an empty state when nothing matches', async () => {
-    render(<DataTableView fileId={1} />)
-    await screen.findByText('record_id')
-    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } })
-    expect(await screen.findByText(/No rows match/)).toBeInTheDocument()
-  })
-
   it('clicking a header requests a server-side sort', async () => {
     render(<DataTableView fileId={1} />)
     await screen.findByText('record_id')

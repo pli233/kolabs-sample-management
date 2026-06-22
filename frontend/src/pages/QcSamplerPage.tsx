@@ -1,12 +1,7 @@
 import { useState } from 'react'
-import { Download } from 'lucide-react'
-import { api, type Cell, type QcParams, type QcResult } from '@/lib/api'
+import { api, type QcParams, type QcResult } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-
-function show(v: Cell): string {
-  if (v === null || v === undefined || v === '') return ''
-  return String(v)
-}
+import { DataTable } from '@/components/DataTable'
 
 const inputCls =
   'h-9 rounded-md border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary'
@@ -103,19 +98,6 @@ export function QcSamplerPage() {
         <Button type="submit" disabled={loading || !project.trim() || !boxes.trim()}>
           {loading ? 'Sampling…' : 'Sample'}
         </Button>
-        {result && result.rows.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              const a = document.createElement('a')
-              a.href = api.qcExportUrl({ ...params(), seed: result.seed })
-              a.click()
-            }}
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
-        )}
       </form>
 
       {error && (
@@ -148,36 +130,15 @@ export function QcSamplerPage() {
             ))}
           </div>
 
-          <div className="max-h-[60vh] overflow-auto rounded-lg border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted">
-                <tr className="text-left">
-                  {result.columns.map((c) => (
-                    <th
-                      key={c}
-                      className="whitespace-nowrap px-3 py-2 font-title text-xs font-semibold text-foreground"
-                    >
-                      {c}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {result.rows.map((row, i) => (
-                  <tr key={i} className="border-t border-border/60">
-                    {row.map((cell, j) => (
-                      <td
-                        key={j}
-                        className="whitespace-nowrap px-3 py-1.5 text-foreground"
-                      >
-                        {show(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={result.columns}
+            rows={result.rows}
+            onExport={() => {
+              const a = document.createElement('a')
+              a.href = api.qcExportUrl({ ...params(), seed: result.seed })
+              a.click()
+            }}
+          />
         </div>
       )}
     </div>

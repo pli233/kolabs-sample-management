@@ -71,13 +71,6 @@ test('upload a feed, it becomes active, and the dashboard is fully featured', as
   await page.mouse.up()
   expect((await headerCell.boundingBox())!.width).toBeGreaterThan(before + 60)
 
-  // 6. Global search (server-side).
-  await page.getByLabel('Search').fill('NUIU972937')
-  await expect(page.getByText(/1 of/)).toBeVisible()
-  await expect(page.getByText('NUIU972937')).toBeVisible()
-  await page.getByLabel('Clear search').click()
-  await expect(page.getByText(/3 rows/)).toBeVisible()
-
   // 7. Sort by record_id descending -> the L38 row moves to the top.
   const header = page.getByRole('button', { name: /record_id/ })
   await header.click()

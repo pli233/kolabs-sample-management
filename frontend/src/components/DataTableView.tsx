@@ -14,7 +14,6 @@ import {
   ChevronsUpDown,
   Columns3,
   Download,
-  Search,
   X,
 } from 'lucide-react'
 import {
@@ -76,8 +75,6 @@ export function DataTableView({ fileId }: { fileId: number }) {
   const [filtered, setFiltered] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  const [q, setQ] = useState('')
-  const [qDebounced, setQDebounced] = useState('')
   const [conditions, setConditions] = useState<FilterCondition[]>([])
   const [conditionsDebounced, setConditionsDebounced] = useState<FilterCondition[]>(
     []
@@ -100,11 +97,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
     ? { col: sorting[0].id, dir: sorting[0].desc ? 'desc' : 'asc' }
     : null
 
-  // Debounce the search box and the filter conditions.
-  useEffect(() => {
-    const t = setTimeout(() => setQDebounced(q), 250)
-    return () => clearTimeout(t)
-  }, [q])
+  // Debounce the filter conditions.
   useEffect(() => {
     const t = setTimeout(() => setConditionsDebounced(conditions), 250)
     return () => clearTimeout(t)
@@ -125,7 +118,6 @@ export function DataTableView({ fileId }: { fileId: number }) {
         const res = await api.getRows(fileId, {
           offset: page * PAGE_SIZE,
           limit: PAGE_SIZE,
-          q: qDebounced,
           filters: activeFilters,
           match: matchMode,
           sort: sort?.col ?? null,
@@ -147,7 +139,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fileId, qDebounced, filtersKey, sort?.col, sort?.dir]
+    [fileId, filtersKey, sort?.col, sort?.dir]
   )
 
   // Reset and reload page 0 when query / sort / file changes.
@@ -160,7 +152,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
     if (parentRef.current) parentRef.current.scrollTop = 0
     setVersion((v) => v + 1)
     void fetchPage(0)
-  }, [qDebounced, filtersKey, sort?.col, sort?.dir, fileId, fetchPage])
+  }, [filtersKey, sort?.col, sort?.dir, fileId, fetchPage])
 
   // Initialize default column visibility once columns are known.
   useEffect(() => {
@@ -242,7 +234,6 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
   function handleExport() {
     const url = api.exportUrl(fileId, {
-      q: qDebounced,
       filters: activeFilters,
       match: matchMode,
       sort: sort?.col ?? null,
@@ -265,29 +256,10 @@ export function DataTableView({ fileId }: { fileId: number }) {
     <div className="space-y-3">
       <SchemaBanner sheet={meta} />
 
-      {/* Toolbar: search + column menu + counts */}
+      {/* Toolbar: filter + column menu + counts (per-column Filter replaces the
+          old global search box) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="relative w-72 max-w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search all columns…"
-              aria-label="Search"
-              className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-9 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
           {/* Column visibility menu */}
           <div className="relative">
             <Button
@@ -362,7 +334,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
         </div>
 
         <div className="text-sm text-muted-foreground">
-          {(qDebounced || activeFilters.length > 0) &&
+          {activeFilters.length > 0 &&
             `${filtered.toLocaleString()} of `}
           {total.toLocaleString()} rows · {visibleCount} cols
         </div>
@@ -497,7 +469,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
           {filtered === 0 && (
             <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              No rows match “{qDebounced}”
+              No rows match the current filters
             </div>
           )}
         </div>
