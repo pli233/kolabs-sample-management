@@ -26,10 +26,32 @@ export interface RowsPage {
   rows: Cell[][]
 }
 
+export type FilterOp =
+  | 'contains'
+  | 'not_contains'
+  | 'equals'
+  | 'not_equals'
+  | 'starts_with'
+  | 'ends_with'
+  | 'gt'
+  | 'lt'
+  | 'gte'
+  | 'lte'
+  | 'is_empty'
+  | 'not_empty'
+
+export interface FilterCondition {
+  column: string
+  op: FilterOp
+  value: string
+}
+
 export interface RowsQuery {
   offset: number
   limit: number
   q?: string
+  filters?: FilterCondition[]
+  match?: 'all' | 'any'
   sort?: string | null
   dir?: 'asc' | 'desc'
 }
@@ -108,6 +130,10 @@ export const api = {
       limit: String(query.limit),
     })
     if (query.q) params.set('q', query.q)
+    if (query.filters && query.filters.length > 0) {
+      params.set('filters', JSON.stringify(query.filters))
+      params.set('match', query.match ?? 'all')
+    }
     if (query.sort) {
       params.set('sort', query.sort)
       params.set('dir', query.dir ?? 'asc')

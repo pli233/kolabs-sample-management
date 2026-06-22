@@ -96,6 +96,15 @@ test('user drags a file in, picks a sheet, then searches and sorts the table', a
   const firstRow = page.locator('div[style*="translateY(0px)"]').first()
   await expect(firstRow).toContainText('L38')
 
+  // 7c. Per-column filter: project equals L38 -> exactly 1 row.
+  await page.getByRole('button', { name: '按列筛选' }).click()
+  await page.getByRole('button', { name: /添加条件/ }).click()
+  await page.getByLabel('筛选列').selectOption('project')
+  await page.getByLabel('运算符').selectOption('equals')
+  await page.getByLabel('筛选值').fill('L38')
+  await page.getByRole('button', { name: '完成' }).click()
+  await expect(page.getByText(/匹配 1/)).toBeVisible()
+
   // 8. Back on the upload page the file is badged as matched.
   await page.getByRole('link', { name: /返回上传/ }).click()
   await expect(

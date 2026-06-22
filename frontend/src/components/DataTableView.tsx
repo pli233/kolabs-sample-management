@@ -16,8 +16,20 @@ import {
   Search,
   X,
 } from 'lucide-react'
-import { api, type Cell, type MatchStatus, type SheetIssue } from '@/lib/api'
+import {
+  api,
+  type Cell,
+  type FilterCondition,
+  type MatchStatus,
+  type SheetIssue,
+} from '@/lib/api'
 import { SchemaBanner } from '@/components/SchemaBanner'
+import {
+  FILTER_OPS,
+  FilterPanel,
+  isActive,
+  opNeedsValue,
+} from '@/components/FilterPanel'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +77,11 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
   const [q, setQ] = useState('')
   const [qDebounced, setQDebounced] = useState('')
+  const [conditions, setConditions] = useState<FilterCondition[]>([])
+  const [conditionsDebounced, setConditionsDebounced] = useState<FilterCondition[]>(
+    []
+  )
+  const [matchMode, setMatchMode] = useState<'all' | 'any'>('all')
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
@@ -82,11 +99,21 @@ export function DataTableView({ fileId }: { fileId: number }) {
     ? { col: sorting[0].id, dir: sorting[0].desc ? 'desc' : 'asc' }
     : null
 
-  // Debounce the search box.
+  // Debounce the search box and the filter conditions.
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 250)
     return () => clearTimeout(t)
   }, [q])
+  useEffect(() => {
+    const t = setTimeout(() => setConditionsDebounced(conditions), 250)
+    return () => clearTimeout(t)
+  }, [conditions])
+
+  const activeFilters = useMemo(
+    () => conditionsDebounced.filter(isActive),
+    [conditionsDebounced]
+  )
+  const filtersKey = JSON.stringify(activeFilters) + matchMode
 
   const fetchPage = useCallback(
     async (page: number) => {
@@ -98,6 +125,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
           offset: page * PAGE_SIZE,
           limit: PAGE_SIZE,
           q: qDebounced,
+          filters: activeFilters,
+          match: matchMode,
           sort: sort?.col ?? null,
           dir: sort?.dir,
         })
@@ -116,7 +145,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
         inflightRef.current.delete(page)
       }
     },
-    [fileId, qDebounced, sort?.col, sort?.dir]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fileId, qDebounced, filtersKey, sort?.col, sort?.dir]
   )
 
   // Reset and reload page 0 when query / sort / file changes.
@@ -129,7 +159,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
     if (parentRef.current) parentRef.current.scrollTop = 0
     setVersion((v) => v + 1)
     void fetchPage(0)
-  }, [qDebounced, sort?.col, sort?.dir, fileId, fetchPage])
+  }, [qDebounced, filtersKey, sort?.col, sort?.dir, fileId, fetchPage])
 
   // Initialize default column visibility once columns are known.
   useEffect(() => {
@@ -294,13 +324,55 @@ export function DataTableView({ fileId }: { fileId: number }) {
               </>
             )}
           </div>
+
+          {/* Per-column structured filters */}
+          <FilterPanel
+            columns={visibleCols.map((c) => c.id)}
+            conditions={conditions}
+            matchMode={matchMode}
+            onConditionsChange={setConditions}
+            onMatchModeChange={setMatchMode}
+          />
         </div>
 
         <div className="text-sm text-muted-foreground">
-          {qDebounced && `匹配 ${filtered.toLocaleString('zh-CN')} / `}共{' '}
-          {total.toLocaleString('zh-CN')} 行 · {visibleCount} 列
+          {(qDebounced || activeFilters.length > 0) &&
+            `匹配 ${filtered.toLocaleString('zh-CN')} / `}
+          共 {total.toLocaleString('zh-CN')} 行 · {visibleCount} 列
         </div>
       </div>
+
+      {/* Active filter chips */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">
+            {matchMode === 'all' ? '同时满足:' : '满足任一:'}
+          </span>
+          {conditions.map((c, i) =>
+            isActive(c) ? (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground"
+              >
+                <span className="font-medium">{c.column}</span>
+                <span className="text-muted-foreground">
+                  {FILTER_OPS.find((o) => o.op === c.op)?.label}
+                </span>
+                {opNeedsValue(c.op) && <span>{c.value}</span>}
+                <button
+                  onClick={() =>
+                    setConditions(conditions.filter((_, idx) => idx !== i))
+                  }
+                  aria-label="移除筛选"
+                  className="rounded-full text-muted-foreground hover:text-[var(--destructive)]"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ) : null
+          )}
+        </div>
+      )}
 
       {/* Centered table */}
       <div

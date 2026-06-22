@@ -93,6 +93,52 @@ def test_rows_global_search(client, sample_xlsx_path):
     assert all(any("416180.08" in str(c) for c in row) for row in body["rows"])
 
 
+def test_rows_numeric_column_filter(client, sample_xlsx_path):
+    import json
+
+    fid = _upload_sample(client, sample_xlsx_path).json()["id"]
+    filters = json.dumps([{"column": "record_id", "op": "gt", "value": "266865"}])
+    body = client.get(f"/api/files/{fid}/rows", params={"filters": filters}).json()
+    assert 0 < body["filtered"] < body["total"]
+    assert all(row[0] > 266865 for row in body["rows"])
+
+
+def test_rows_multi_condition_and(client, sample_xlsx_path):
+    import json
+
+    fid = _upload_sample(client, sample_xlsx_path).json()["id"]
+    filters = json.dumps(
+        [
+            {"column": "record_id", "op": "gte", "value": "1"},
+            {"column": "record_id", "op": "lte", "value": "5"},
+        ]
+    )
+    body = client.get(
+        f"/api/files/{fid}/rows", params={"filters": filters, "match": "all"}
+    ).json()
+    assert body["filtered"] == 5
+    assert sorted(row[0] for row in body["rows"]) == [1, 2, 3, 4, 5]
+
+
+def test_rows_multi_condition_any(client, sample_xlsx_path):
+    import json
+
+    fid = _upload_sample(client, sample_xlsx_path).json()["id"]
+
+    def count(conds, mode="all"):
+        return client.get(
+            f"/api/files/{fid}/rows",
+            params={"filters": json.dumps(conds), "match": mode},
+        ).json()["filtered"]
+
+    low = [{"column": "record_id", "op": "lt", "value": "3"}]
+    high = [{"column": "record_id", "op": "gt", "value": "266869"}]
+    # The two ranges are disjoint, so OR == sum of the parts.
+    any_count = count(low + high, "any")
+    assert any_count == count(low) + count(high)
+    assert any_count > count(low)  # OR is strictly larger than either part
+
+
 def test_rows_sort_by_column(client, sample_xlsx_path):
     fid = _upload_sample(client, sample_xlsx_path).json()["id"]
     desc = client.get(

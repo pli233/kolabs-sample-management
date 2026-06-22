@@ -1,6 +1,7 @@
 """API routes: upload, list, detail, raw bytes, parsed data."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from urllib.parse import quote
 
@@ -199,6 +200,56 @@ def _sort_key(value):
     return (1, 0.0, str(value).lower())
 
 
+def _num(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def _is_blank(value) -> bool:
+    return value is None or _cell_text(value).strip() == ""
+
+
+def _apply_condition(value, op: str, target: str) -> bool:
+    """Evaluate one column condition against a cell value."""
+    if op == "is_empty":
+        return _is_blank(value)
+    if op == "not_empty":
+        return not _is_blank(value)
+
+    text = _cell_text(value).lower()
+    t = (target or "").lower()
+
+    if op == "contains":
+        return t in text
+    if op == "not_contains":
+        return t not in text
+    if op == "equals":
+        return text == t
+    if op == "not_equals":
+        return text != t
+    if op == "starts_with":
+        return text.startswith(t)
+    if op == "ends_with":
+        return text.endswith(t)
+    if op in ("gt", "lt", "gte", "lte"):
+        a, b = _num(value), _num(target)
+        if a is not None and b is not None:
+            return {"gt": a > b, "lt": a < b, "gte": a >= b, "lte": a <= b}[op]
+        # Blank cells never satisfy an inequality; otherwise compare as strings.
+        if _is_blank(value):
+            return False
+        return {"gt": text > t, "lt": text < t, "gte": text >= t, "lte": text <= t}[op]
+    return True
+
+
 def _primary_sheet(record: FileRecord) -> dict:
     try:
         parsed = storage.load_parsed(record.cache_path)
@@ -221,24 +272,51 @@ def get_rows(
     offset: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=2000),
     q: str = Query(""),
+    filters: str = Query("", description="JSON list of {column, op, value}"),
+    match: str = Query("all", pattern="^(all|any)$"),
     sort: str | None = Query(None),
     dir: str = Query("asc"),
 ):
-    """Paginated rows of the primary sheet, with global search + column sort
-    applied across ALL rows server-side (not just a loaded window)."""
+    """Paginated rows of the primary sheet. Global search (``q``) plus per-column
+    structured conditions (``filters``, combined by ``match`` = all/any) are
+    applied across ALL rows server-side, then sorted and sliced."""
     record = _get_record(file_id)
     sheet = _primary_sheet(record)
     columns: list[str] = sheet["columns"]
     rows: list[list] = sheet["rows"]
     total = len(rows)
+    col_index = {c: i for i, c in enumerate(columns)}
 
-    if q:
+    conditions: list[dict] = []
+    if filters:
+        try:
+            parsed = json.loads(filters)
+            conditions = [c for c in parsed if c.get("column") in col_index]
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail="filters 参数格式错误") from exc
+
+    if q or conditions:
         needle = q.lower()
-        rows = [r for r in rows if any(needle in _cell_text(c).lower() for c in r)]
+
+        def passes(row: list) -> bool:
+            if q and not any(needle in _cell_text(c).lower() for c in row):
+                return False
+            if conditions:
+                checks = [
+                    _apply_condition(
+                        row[col_index[c["column"]]], c.get("op", "contains"),
+                        str(c.get("value", "")),
+                    )
+                    for c in conditions
+                ]
+                return any(checks) if match == "any" else all(checks)
+            return True
+
+        rows = [r for r in rows if passes(r)]
     filtered = len(rows)
 
-    if sort and sort in columns:
-        ci = columns.index(sort)
+    if sort and sort in col_index:
+        ci = col_index[sort]
         rows = sorted(rows, key=lambda r: _sort_key(r[ci]), reverse=(dir == "desc"))
 
     page = rows[offset : offset + limit]

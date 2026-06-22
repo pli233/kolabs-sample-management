@@ -82,6 +82,25 @@ describe('DataTableView (server-paginated)', () => {
     )
   })
 
+  it('adding a per-column filter queries with structured conditions', async () => {
+    render(<DataTableView fileId={1} />)
+    await screen.findByText('record_id')
+    fireEvent.click(screen.getByRole('button', { name: '按列筛选' }))
+    fireEvent.click(screen.getByRole('button', { name: /添加条件/ }))
+    fireEvent.change(screen.getByLabelText('筛选值'), { target: { value: 'L37' } })
+    await waitFor(() =>
+      expect(getRows).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          filters: expect.arrayContaining([
+            expect.objectContaining({ op: 'contains', value: 'L37' }),
+          ]),
+          match: 'all',
+        })
+      )
+    )
+  })
+
   it('renders the schema banner for a partial sheet', async () => {
     getRows.mockImplementation(async (_id: number, q: RowsQuery) =>
       page(q, {
