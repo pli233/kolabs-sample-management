@@ -106,6 +106,20 @@ test('upload a feed, it becomes active, and the dashboard is fully featured', as
   await expect(page.getByText('Active', { exact: true })).toBeVisible()
 })
 
+test('all tool tabs are reachable from the sidebar', async ({ page }) => {
+  await page.goto('/dashboard')
+  for (const label of [
+    'Box Lookup',
+    'QC Sampler',
+    'Aliquot Finder',
+    'Scan Reconcile',
+    'Data Feeds',
+  ]) {
+    await page.getByRole('link', { name: label }).click()
+    await expect(page.getByRole('heading', { name: label })).toBeVisible()
+  }
+})
+
 test('rejects an unsupported file type at the dropzone', async ({ page }) => {
   await page.goto('/feeds')
   const dataTransfer = await page.evaluateHandle(() => {
