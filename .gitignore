@@ -1,0 +1,26 @@
+node_modules/
+backend/uploads/
+backend/app.db
+__pycache__/
+*.pyc
+.DS_Store
+dist/
+.venv/
+
+# backend
+backend/.venv/
+backend/uploads/
+backend/app.db
+backend/**/__pycache__/
+.pytest_cache/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# e2e
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+backend/.e2e/

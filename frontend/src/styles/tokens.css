@@ -1,0 +1,36 @@
+/* Design tokens derived from kolaboratory.com (Webflow brand).
+   See docs/superpowers/specs §7. */
+:root {
+  /* Neutrals */
+  --neutral-100: #ffffff;
+  --neutral-200: #f9fafb;
+  --neutral-300: #f2f4f7;
+  --neutral-400: #d4dce3;
+  --neutral-500: #999fb2;
+  --neutral-600: #4e5561;
+  --neutral-700: #303643;
+  --neutral-900: #060f1c;
+
+  /* Brand */
+  --brand-sky: #0e8ed6;
+  --brand-cobalt: #0112b8;
+  --brand-midnight: #010b24;
+
+  /* Semantic (shadcn-style) */
+  --background: var(--neutral-100);
+  --foreground: var(--neutral-900);
+  --card: var(--neutral-100);
+  --muted: var(--neutral-300);
+  --muted-foreground: var(--neutral-600);
+  --border: var(--neutral-400);
+  --input: var(--neutral-400);
+  --primary: var(--brand-sky);
+  --primary-foreground: #ffffff;
+  --primary-hover: #0b76b0;
+  --accent: var(--neutral-300);
+  --accent-foreground: var(--neutral-900);
+  --destructive: #ea384c;
+  --warning: #fff7e6;
+  --warning-foreground: #92610a;
+  --midnight: var(--brand-midnight);
+}
