@@ -94,6 +94,32 @@ export interface BoxLookupResult {
   locations: BoxLocation[]
 }
 
+export interface QcResult {
+  project: string
+  seed: number
+  perBox: number
+  boxes: { box: string; available: number; sampled: number }[]
+  columns: string[]
+  rows: Cell[][]
+}
+
+export interface QcParams {
+  project: string
+  boxes: string
+  perBox: number
+  seed?: number | null
+}
+
+function qcQuery(p: QcParams): URLSearchParams {
+  const params = new URLSearchParams({
+    project: p.project,
+    boxes: p.boxes,
+    per_box: String(p.perBox),
+  })
+  if (p.seed != null) params.set('seed', String(p.seed))
+  return params
+}
+
 async function handle<T>(resp: Response): Promise<T> {
   if (!resp.ok) {
     let detail = `Request failed (${resp.status})`
@@ -141,6 +167,18 @@ export const api = {
 
   boxLookupExportUrl(box: string): string {
     return `${API_BASE}/api/box-lookup?format=xlsx&box=${encodeURIComponent(box)}`
+  },
+
+  async qcSample(p: QcParams): Promise<QcResult> {
+    return handle<QcResult>(
+      await fetch(`${API_BASE}/api/qc-sample?${qcQuery(p).toString()}`)
+    )
+  },
+
+  qcExportUrl(p: QcParams): string {
+    const params = qcQuery(p)
+    params.set('format', 'xlsx')
+    return `${API_BASE}/api/qc-sample?${params.toString()}`
   },
 
   async setActiveFeed(id: number): Promise<FileMeta> {

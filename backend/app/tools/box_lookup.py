@@ -6,25 +6,15 @@ Given just a box number, list every unique storage location it appears in
 from __future__ import annotations
 
 from ..normalize import normalize_box
+from .common import blank as _blank
+from .common import is_tube as _is_tube
 
 # Columns that define a unique physical location.
 LOCATION_COLS = ["project", "freezer", "shelf", "rack", "drawer", "box_pos", "box"]
 # Detail fields shown for each example tube.
 EXAMPLE_COLS = ["sample_pos", "cryobank", "aliquot", "track_id", "record_id", "project_id"]
-# A row is a real tube only if at least one of these is non-blank.
-_TUBE_FIELDS = ["sample_pos", "record_id", "cryobank", "aliquot", "track_id", "project_id"]
 
 MAX_EXAMPLES = 2
-
-
-def _blank(v) -> bool:
-    return v is None or str(v).strip() == ""
-
-
-def _is_tube(row: list, idx: dict) -> bool:
-    return any(
-        field in idx and not _blank(row[idx[field]]) for field in _TUBE_FIELDS
-    )
 
 
 def lookup_box(sheet: dict, box: str) -> dict:

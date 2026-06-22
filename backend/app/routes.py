@@ -13,7 +13,7 @@ from sqlmodel import select
 from . import export, parsing, storage
 from .config import settings
 from .normalize import normalizer_for
-from .tools import box_lookup
+from .tools import box_lookup, qc
 from .models import (
     FileRecord,
     get_active_file_id,
@@ -426,6 +426,31 @@ def box_lookup_route(
     if format == "xlsx":
         columns, rows = box_lookup.to_table(result)
         return _xlsx_response(columns, rows, f"box_{result['box']}_lookup")
+    return result
+
+
+@router.get("/qc-sample")
+def qc_sample_route(
+    project: str = Query(..., min_length=1),
+    boxes: str = Query(..., min_length=1),
+    per_box: int = Query(5, ge=1),
+    seed: int | None = Query(None),
+    format: str = Query("json", pattern="^(json|xlsx)$"),
+):
+    """Legacy make_project_box_qc_list: seeded random QC sample per box."""
+    import random as _random
+
+    box_list = qc.parse_boxes(boxes)
+    if not box_list:
+        raise HTTPException(status_code=400, detail="No valid box numbers")
+    used_seed = seed if seed is not None else _random.randrange(1, 2**31)
+
+    sheet = _primary_sheet(_active_record())
+    result = qc.qc_sample(sheet, project, box_list, per_box, used_seed)
+    if format == "xlsx":
+        return _xlsx_response(
+            result["columns"], result["rows"], f"qc_{project}_seed{used_seed}"
+        )
     return result
 
 

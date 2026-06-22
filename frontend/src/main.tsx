@@ -6,6 +6,7 @@ import { SidebarLayout } from './App'
 import { DataFeedsPage } from './pages/DataFeedsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BoxLookupPage } from './pages/BoxLookupPage'
+import { QcSamplerPage } from './pages/QcSamplerPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/box-lookup" element={<BoxLookupPage />} />
+          <Route path="/qc-sampler" element={<QcSamplerPage />} />
           <Route path="/feeds" element={<DataFeedsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
