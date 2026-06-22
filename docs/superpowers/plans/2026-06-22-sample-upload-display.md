@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 本期唯一测试夹具:`data/数据库下载结果.xlsx`(主库 43 列)。其余 `data/` 文件属其他需求,不处理。
+- 本期唯一测试夹具:`data/sample_database.xlsx`(主库 43 列)。其余 `data/` 文件属其他需求,不处理。
 - 主库 schema 为固定 43 有序列(见 spec §4.3),schema 注册表可扩展但本期只注册 `main_library`。
 - schema 校验**不阻断**保存与查看;不符仅记 `issues` 并在 UI 提示。
 - 文件大小上限 50MB;仅接受扩展名 `.xlsx/.xls/.csv`。
@@ -32,7 +32,7 @@
 - [ ] Step 1: 写 `requirements.txt`(fastapi, uvicorn[standard], python-multipart, openpyxl, sqlmodel, pytest, httpx)。
 - [ ] Step 2: 写 `config.py` 暴露 `settings`。
 - [ ] Step 3: 写 `main.py` 创建 app + CORS(允许 localhost:5173)+ `/api/health`。
-- [ ] Step 4: `conftest.py` 提供 `client = TestClient(app)` 与 `sample_xlsx_path` fixture 指向 `data/数据库下载结果.xlsx`。
+- [ ] Step 4: `conftest.py` 提供 `client = TestClient(app)` 与 `sample_xlsx_path` fixture 指向 `data/sample_database.xlsx`。
 - [ ] Step 5: 写测试 `tests/test_health.py::test_health` 断言 200 + `{"status":"ok"}`。
 - [ ] Step 6: Run `cd backend && python -m pytest tests/test_health.py -v` → PASS。
 - [ ] Step 7: Commit `feat(backend): scaffold FastAPI app with health check`。
@@ -215,7 +215,7 @@
 - Create: `backend/Dockerfile` 或 `Procfile`, `railway.json`/`railway.toml`, 根 `README.md`(运行说明), `backend/.env.example`, `frontend/.env.example`
 - Modify: README 写本地启动与 Railway 部署步骤。
 
-- [ ] Step 1: 本地起后端(`uvicorn app.main:app --reload`)+ 前端(`npm run dev`),手动跑通 BDD 场景:上传 `数据库下载结果.xlsx` → 双视角 → 多 sheet 切换 → 上传 `.txt` 被拒。
+- [ ] Step 1: 本地起后端(`uvicorn app.main:app --reload`)+ 前端(`npm run dev`),手动跑通 BDD 场景:上传 `sample_database.xlsx` → 双视角 → 多 sheet 切换 → 上传 `.txt` 被拒。
 - [ ] Step 2: 写 Dockerfile(后端)+ Railway 配置 + 持久卷挂载说明;前端 build 由后端 StaticFiles 托管或单独说明。
 - [ ] Step 3: 写 README(架构、启动、部署、测试命令)。
 - [ ] Step 4: Run 后端全量 `python -m pytest -v` 与前端 `npm run test` + `npm run build`,确认全绿。

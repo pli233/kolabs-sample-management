@@ -54,7 +54,7 @@ backend/
     models.py          # SQLite 元数据模型
   uploads/             # 原始文件(gitignore)
   app.db               # SQLite(gitignore)
-  tests/               # pytest,用 data/数据库下载结果.xlsx 作夹具
+  tests/               # pytest,用 data/sample_database.xlsx 作夹具
 frontend/
   src/
     pages/UploadPage.tsx
@@ -67,10 +67,10 @@ frontend/
     styles/tokens.css            # Kolaboratory 设计令牌
 docs/superpowers/specs/
 data/
-  数据库下载结果.xlsx           # 本需求唯一相关样本(测试夹具)
+  sample_database.xlsx           # 本需求唯一相关样本(测试夹具)
 ```
 
-> `data/` 下的 `单次扫描结果.xls`、`保存新tube的location.xlsx` 属于**其他需求**,本期不处理。
+> `data/` 下的 `sample_scan.xls`、`保存新tube的location.xlsx` 属于**其他需求**,本期不处理。
 
 ---
 
@@ -93,7 +93,7 @@ data/
 ### 4.3 Schema 层(可扩展,本期单 schema)
 
 - `registry.py`:维护 `{schema_name: SchemaDef}`。本期只注册 `main_library`。
-- `main_library.py`:主库 43 个有序列名(来自 `数据库下载结果.xlsx`):
+- `main_library.py`:主库 43 个有序列名(来自 `sample_database.xlsx`):
   `record_id, project, project_id, sample, type, track_id, aliquot, volume_ul, temp, freezer, shelf, rack, drawer, box_pos, box_type, box, sample_pos, thawed, date_thawed, date_shipped, source, date_frozen, obs, cryobank, not_in_box, empty_shipped, zika_project, at_yale, sent_collaborator, date_shipped_collab, date_returned, thawed_aliq, volume_alert, soroteca_yale_complete, shipment_date, shipment_box, shipment_position, volume_sent, current_volume, institution_name, researcher_name, shipping_notes, shipment_data_complete`
 - **匹配**:上传时逐 schema 比对文件中 sheet 的表头。命中 → `schema_type = main_library`;都不命中 → `unrecognized`。
 - **校验**:对每个 sheet,比对表头与 schema → 产出 `issues`(缺列 / 多列 / 顺序不符)。校验**不阻断**保存与查看。
@@ -171,7 +171,7 @@ Feature: 上传并以双视角展示样本库文件
 
   Scenario: 上传合法主库文件
     Given 我在首页
-    When 我把 数据库下载结果.xlsx 拖入上传区
+    When 我把 sample_database.xlsx 拖入上传区
     Then 上传成功并跳转到 viewer
     And 默认显示「Excel 原样式」视角,呈现 Excel 质感的网格与 sheet 标签
     And 我能切换到「优化表格」视角,看到规范化后的 43 列数据
@@ -208,7 +208,7 @@ Feature: 上传并以双视角展示样本库文件
 
 ## 9. 测试策略
 
-- **后端 pytest**:以 `data/数据库下载结果.xlsx` 为真实夹具,覆盖上传、openpyxl 解析、规范化、主库 schema 校验、各错误分支(类型/损坏/超限/空文件);schema 校验对缺列/多列文件产出正确 `issues`。
+- **后端 pytest**:以 `data/sample_database.xlsx` 为真实夹具,覆盖上传、openpyxl 解析、规范化、主库 schema 校验、各错误分支(类型/损坏/超限/空文件);schema 校验对缺列/多列文件产出正确 `issues`。
 - **前端 Vitest + Testing Library**:Dropzone(接受/拒绝类型)、视角 ToggleGroup 切换、SheetTabs、schema 提示条渲染。
 - 端到端(Playwright)留到后续需求再补。
 

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SAMPLE_XLSX = _REPO_ROOT / "data" / "数据库下载结果.xlsx"
+SAMPLE_XLSX = _REPO_ROOT / "data" / "sample_database.xlsx"
 
 
 @pytest.fixture

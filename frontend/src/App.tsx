@@ -8,6 +8,7 @@ import {
   TestTube2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/Logo'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,13 +23,11 @@ export function SidebarLayout() {
   return (
     <div className="flex min-h-full bg-background">
       <aside className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-[var(--midnight)] px-3 py-4">
-        <div className="mb-4 flex items-center gap-2 px-2">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-primary font-title text-sm font-bold text-primary-foreground">
-            K
-          </span>
-          <span className="font-title text-base font-semibold text-white">
-            Kolabs
-          </span>
+        <div className="mb-5 px-2">
+          <Logo />
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white/45">
+            Sample Management
+          </p>
         </div>
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink

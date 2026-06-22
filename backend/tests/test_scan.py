@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.tools.scan import dedup_files, parse_scan, reconcile
 
-_REAL_XLS = Path(__file__).resolve().parent.parent.parent / "data" / "单次扫描结果.xls"
+_REAL_XLS = Path(__file__).resolve().parent.parent.parent / "data" / "sample_scan.xls"
 
 
 def test_parse_real_xls():

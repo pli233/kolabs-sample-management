@@ -1,6 +1,6 @@
 """Fixed-column schema for the main biorepository library export.
 
-Derived from ``data/数据库下载结果.xlsx`` (sheet "NEWSorotecaOfThePauD_DATA").
+Derived from ``data/sample_database.xlsx`` (sheet "NEWSorotecaOfThePauD_DATA").
 This is the only schema implemented this iteration; others are added later.
 """
 from __future__ import annotations

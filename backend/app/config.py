@@ -31,7 +31,7 @@ class Settings:
 
     @property
     def SAMPLE_XLSX(self) -> Path:
-        return _REPO_ROOT / "data" / "数据库下载结果.xlsx"
+        return _REPO_ROOT / "data" / "sample_database.xlsx"
 
     @property
     def CORS_ORIGINS(self) -> list[str]:

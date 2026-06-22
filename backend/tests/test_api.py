@@ -7,7 +7,7 @@ def _upload_sample(client, sample_xlsx_path):
             "/api/files",
             files={
                 "file": (
-                    "数据库下载结果.xlsx",
+                    "sample_database.xlsx",
                     f,
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
