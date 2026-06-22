@@ -1,21 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Database } from 'lucide-react'
-import { api, type FileMeta } from '@/lib/api'
+import { api, type FileMeta, type Overview } from '@/lib/api'
 import { DataTableView } from '@/components/DataTableView'
+import { OverviewCharts } from '@/components/OverviewCharts'
 import { Button } from '@/components/ui/button'
 import { fileStatusBadge } from '@/lib/match'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const [active, setActive] = useState<FileMeta | null | undefined>(undefined)
+  const [overview, setOverview] = useState<Overview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    setOverview(null)
     api
       .getActiveFeed()
-      .then((r) => !cancelled && setActive(r.active))
+      .then((r) => {
+        if (cancelled) return
+        setActive(r.active)
+        if (r.active) {
+          api
+            .getOverview(r.active.id)
+            .then((o) => !cancelled && setOverview(o))
+            .catch(() => {})
+        }
+      })
       .catch((e) => !cancelled && setError((e as Error).message))
     return () => {
       cancelled = true
@@ -72,6 +84,8 @@ export function DashboardPage() {
           </p>
         )}
       </div>
+
+      {overview && <OverviewCharts overview={overview} />}
 
       <DataTableView fileId={active.id} />
     </div>

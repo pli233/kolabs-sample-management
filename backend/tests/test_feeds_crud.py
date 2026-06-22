@@ -64,6 +64,17 @@ def test_delete_active_reassigns_and_removes_file(client):
     assert len(client.get("/api/files").json()) == 1
 
 
+def test_overview_aggregates(client):
+    a = _upload(client, _make_feed([1, 2, 3, 4], project="L37"), "a.xlsx").json()
+    b = _make_feed([5, 6], project="L40")
+    # one feed, four L37 rows
+    body = client.get(f"/api/files/{a['id']}/overview").json()
+    assert body["total"] == 4
+    assert body["byProject"] == [{"name": "L37", "count": 4}]
+    assert body["projectCount"] == 1
+    del b  # unused second sample
+
+
 def test_delete_last_feed_clears_active(client):
     a = _upload(client, _make_feed([1]), "only.xlsx").json()
     client.delete(f"/api/files/{a['id']}")

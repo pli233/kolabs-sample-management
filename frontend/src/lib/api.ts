@@ -46,6 +46,19 @@ export interface FilterCondition {
   value: string
 }
 
+export interface Bucket {
+  name: string
+  count: number
+}
+
+export interface Overview {
+  total: number
+  projectCount: number
+  byFreezer: Bucket[]
+  byProject: Bucket[]
+  byType: Bucket[]
+}
+
 export interface RowsQuery {
   offset: number
   limit: number
@@ -275,6 +288,10 @@ export const api = {
         body: JSON.stringify({ primary_sheet: primarySheet }),
       })
     )
+  },
+
+  async getOverview(id: number): Promise<Overview> {
+    return handle<Overview>(await fetch(`${API_BASE}/api/files/${id}/overview`))
   },
 
   async getRows(id: number, query: RowsQuery): Promise<RowsPage> {

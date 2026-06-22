@@ -411,6 +411,40 @@ def _query_rows(
     return columns, rows, total
 
 
+@router.get("/files/{file_id}/overview")
+def get_overview(file_id: int):
+    """Aggregate counts of the primary sheet for the dashboard charts."""
+    from collections import Counter
+
+    sheet = _primary_sheet(_get_record(file_id))
+    columns: list[str] = sheet["columns"]
+    rows: list[list] = sheet["rows"]
+    idx = {c: i for i, c in enumerate(columns)}
+
+    def counts(col: str, top: int | None = None) -> list[dict]:
+        if col not in idx:
+            return []
+        i = idx[col]
+        c: Counter = Counter()
+        for r in rows:
+            v = r[i]
+            if v is not None and str(v).strip() != "":
+                c[str(v).strip()] += 1
+        items = sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))
+        if top:
+            items = items[:top]
+        return [{"name": k, "count": v} for k, v in items]
+
+    by_project = counts("project")
+    return {
+        "total": len(rows),
+        "projectCount": len(by_project),
+        "byFreezer": counts("freezer"),
+        "byProject": by_project[:12],
+        "byType": counts("type", 8),
+    }
+
+
 @router.get("/files/{file_id}/rows")
 def get_rows(
     file_id: int,
