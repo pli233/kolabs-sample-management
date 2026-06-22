@@ -110,6 +110,25 @@ export interface QcParams {
   seed?: number | null
 }
 
+export interface ToolTable {
+  columns: string[]
+  rows: Cell[][]
+}
+
+export interface AliquotParams {
+  ids: string
+  preferredFreezer?: string
+  backups: number
+}
+
+function aliquotQuery(p: AliquotParams): URLSearchParams {
+  const params = new URLSearchParams({ ids: p.ids, backups: String(p.backups) })
+  if (p.preferredFreezer && p.preferredFreezer.trim()) {
+    params.set('preferred_freezer', p.preferredFreezer.trim())
+  }
+  return params
+}
+
 function qcQuery(p: QcParams): URLSearchParams {
   const params = new URLSearchParams({
     project: p.project,
@@ -179,6 +198,18 @@ export const api = {
     const params = qcQuery(p)
     params.set('format', 'xlsx')
     return `${API_BASE}/api/qc-sample?${params.toString()}`
+  },
+
+  async aliquotFinder(p: AliquotParams): Promise<ToolTable> {
+    return handle<ToolTable>(
+      await fetch(`${API_BASE}/api/aliquot-finder?${aliquotQuery(p).toString()}`)
+    )
+  },
+
+  aliquotExportUrl(p: AliquotParams): string {
+    const params = aliquotQuery(p)
+    params.set('format', 'xlsx')
+    return `${API_BASE}/api/aliquot-finder?${params.toString()}`
   },
 
   async setActiveFeed(id: number): Promise<FileMeta> {

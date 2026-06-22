@@ -1,11 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Boxes, Database, Dices, LayoutDashboard } from 'lucide-react'
+import {
+  Boxes,
+  Database,
+  Dices,
+  LayoutDashboard,
+  TestTube2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/box-lookup', label: 'Box Lookup', icon: Boxes },
   { to: '/qc-sampler', label: 'QC Sampler', icon: Dices },
+  { to: '/aliquot-finder', label: 'Aliquot Finder', icon: TestTube2 },
   { to: '/feeds', label: 'Data Feeds', icon: Database },
 ]
 

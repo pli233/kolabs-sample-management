@@ -13,7 +13,7 @@ from sqlmodel import select
 from . import export, parsing, storage
 from .config import settings
 from .normalize import normalizer_for
-from .tools import box_lookup, qc
+from .tools import aliquot, box_lookup, qc
 from .models import (
     FileRecord,
     get_active_file_id,
@@ -451,6 +451,24 @@ def qc_sample_route(
         return _xlsx_response(
             result["columns"], result["rows"], f"qc_{project}_seed{used_seed}"
         )
+    return result
+
+
+@router.get("/aliquot-finder")
+def aliquot_finder_route(
+    ids: str = Query(..., min_length=1),
+    preferred_freezer: str | None = Query(None),
+    backups: int = Query(3, ge=0),
+    format: str = Query("json", pattern="^(json|xlsx)$"),
+):
+    """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person."""
+    id_list = aliquot.parse_ids(ids)
+    if not id_list:
+        raise HTTPException(status_code=400, detail="No ids provided")
+    sheet = _primary_sheet(_active_record())
+    result = aliquot.find_aliquots(sheet, id_list, preferred_freezer, backups)
+    if format == "xlsx":
+        return _xlsx_response(result["columns"], result["rows"], "aliquot_finder")
     return result
 
 
