@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { BoxLookupPage } from './pages/BoxLookupPage'
 import { QcSamplerPage } from './pages/QcSamplerPage'
 import { AliquotFinderPage } from './pages/AliquotFinderPage'
+import { ScanReconcilePage } from './pages/ScanReconcilePage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,6 +20,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/box-lookup" element={<BoxLookupPage />} />
           <Route path="/qc-sampler" element={<QcSamplerPage />} />
           <Route path="/aliquot-finder" element={<AliquotFinderPage />} />
+          <Route path="/scan-reconcile" element={<ScanReconcilePage />} />
           <Route path="/feeds" element={<DataFeedsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

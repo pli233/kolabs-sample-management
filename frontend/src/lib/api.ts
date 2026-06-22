@@ -115,6 +115,19 @@ export interface ToolTable {
   rows: Cell[][]
 }
 
+export type ScanRow = Record<string, Cell>
+
+export interface ScanResult {
+  scan_not_in_database: ScanRow[]
+  wrong_location: ScanRow[]
+  database_not_in_scan: ScanRow[]
+  position_conflicts: ScanRow[]
+  duplicate_scan_tubecodes: ScanRow[]
+  correct_matches: number
+  fileSummary: ScanRow[]
+  fileErrors: ScanRow[]
+}
+
 export interface AliquotParams {
   ids: string
   preferredFreezer?: string
@@ -210,6 +223,32 @@ export const api = {
     const params = aliquotQuery(p)
     params.set('format', 'xlsx')
     return `${API_BASE}/api/aliquot-finder?${params.toString()}`
+  },
+
+  async scanReconcile(files: File[]): Promise<ScanResult> {
+    const form = new FormData()
+    for (const f of files) form.append('files', f)
+    return handle<ScanResult>(
+      await fetch(`${API_BASE}/api/scan-reconcile`, { method: 'POST', body: form })
+    )
+  },
+
+  async scanReconcileDownload(files: File[]): Promise<void> {
+    const form = new FormData()
+    for (const f of files) form.append('files', f)
+    form.append('format', 'xlsx')
+    const resp = await fetch(`${API_BASE}/api/scan-reconcile`, {
+      method: 'POST',
+      body: form,
+    })
+    if (!resp.ok) throw new Error(`Export failed (${resp.status})`)
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'scan_reconcile.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
   },
 
   async setActiveFeed(id: number): Promise<FileMeta> {

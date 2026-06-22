@@ -40,3 +40,39 @@ def build_xlsx(columns: list[str], rows: list[list], sheet_name: str = "Export")
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
+
+
+def _style_header(ws) -> None:
+    for cell in ws[1]:
+        cell.fill = _HEADER_FILL
+        cell.font = _HEADER_FONT
+        cell.alignment = Alignment(vertical="center")
+
+
+def build_multi_xlsx(sheets: dict[str, tuple[list[str], list[list]]]) -> bytes:
+    """Build a workbook with one sheet per (name -> (columns, rows))."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    for name, (columns, rows) in sheets.items():
+        ws = wb.create_sheet(_safe_sheet_name(name))
+        ws.append(columns or ["(empty)"])
+        _style_header(ws)
+        for row in rows:
+            ws.append(list(row))
+        ws.freeze_panes = "A2"
+    if not wb.sheetnames:
+        wb.create_sheet("Empty")
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def dicts_to_table(items: list[dict]) -> tuple[list[str], list[list]]:
+    """Flatten a list of dicts to (columns, rows) using the union of keys."""
+    columns: list[str] = []
+    for it in items:
+        for k in it:
+            if k not in columns:
+                columns.append(k)
+    rows = [[it.get(c) for c in columns] for it in items]
+    return columns, rows

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlmodel import select
@@ -13,7 +13,7 @@ from sqlmodel import select
 from . import export, parsing, storage
 from .config import settings
 from .normalize import normalizer_for
-from .tools import aliquot, box_lookup, qc
+from .tools import aliquot, box_lookup, qc, scan
 from .models import (
     FileRecord,
     get_active_file_id,
@@ -470,6 +470,58 @@ def aliquot_finder_route(
     if format == "xlsx":
         return _xlsx_response(result["columns"], result["rows"], "aliquot_finder")
     return result
+
+
+_SCAN_CATEGORIES = [
+    "scan_not_in_database", "wrong_location", "database_not_in_scan",
+    "position_conflicts", "duplicate_scan_tubecodes",
+]
+
+
+@router.post("/scan-reconcile")
+async def scan_reconcile_route(
+    files: list[UploadFile] = File(...),
+    format: str = Form("json"),
+):
+    """Legacy compare_scan_to_database: reconcile scan files vs the active feed."""
+    db = _primary_sheet(_active_record())
+
+    by_file: dict[str, list[dict]] = {}
+    errors: list[dict] = []
+    for f in files:
+        data = await f.read()
+        name = f.filename or "scan"
+        try:
+            by_file[name] = scan.parse_scan(name, data)
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"file": name, "error": str(exc)})
+
+    if not any(by_file.values()):
+        raise HTTPException(status_code=422, detail="No readable scan data in the files")
+
+    dedup = scan.dedup_files(by_file)
+    records = [r for fn in dedup["kept"] for r in by_file[fn]]
+    result = scan.reconcile(db, records)
+    result["fileSummary"] = dedup["summary"]
+    result["fileErrors"] = errors
+
+    if format == "xlsx":
+        sheets: dict[str, tuple[list[str], list[list]]] = {}
+        for cat in _SCAN_CATEGORIES:
+            sheets[cat] = export.dicts_to_table(result[cat])
+        sheets["file_summary"] = export.dicts_to_table(result["fileSummary"])
+        return _xlsx_response_multi(sheets, "scan_reconcile")
+    return result
+
+
+def _xlsx_response_multi(sheets: dict, filename: str) -> Response:
+    data = export.build_multi_xlsx(sheets)
+    fname = quote(f"{filename}.xlsx")
+    return Response(
+        content=data,
+        media_type=_XLSX_MIME,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"},
+    )
 
 
 @router.get("/files/{file_id}/export")

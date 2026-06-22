@@ -4,6 +4,7 @@ import {
   Database,
   Dices,
   LayoutDashboard,
+  ScanLine,
   TestTube2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,7 @@ const NAV = [
   { to: '/box-lookup', label: 'Box Lookup', icon: Boxes },
   { to: '/qc-sampler', label: 'QC Sampler', icon: Dices },
   { to: '/aliquot-finder', label: 'Aliquot Finder', icon: TestTube2 },
+  { to: '/scan-reconcile', label: 'Scan Reconcile', icon: ScanLine },
   { to: '/feeds', label: 'Data Feeds', icon: Database },
 ]
 
