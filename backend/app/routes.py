@@ -182,6 +182,34 @@ def get_file(file_id: int):
     return _record_to_meta(_get_record(file_id))
 
 
+@router.delete("/files/{file_id}")
+def delete_file(file_id: int):
+    """Delete a feed (record + stored file + cache). If it was the active feed,
+    reassign to the most recent remaining feed (or none)."""
+    record = _get_record(file_id)
+    for path in (record.stored_path, record.cache_path):
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
+    with get_session() as session:
+        rec = session.get(FileRecord, file_id)
+        if rec is not None:
+            session.delete(rec)
+            session.commit()
+
+    new_active = None
+    if get_active_file_id() == file_id:
+        with get_session() as session:
+            nxt = session.exec(
+                select(FileRecord).order_by(FileRecord.uploaded_at.desc())
+            ).first()
+        set_active_file_id(nxt.id if nxt else None)
+        new_active = nxt.id if nxt else None
+
+    return {"deleted": file_id, "active": new_active}
+
+
 @router.patch("/files/{file_id}")
 def set_primary_sheet(file_id: int, payload: PrimarySheetUpdate):
     """Designate which sheet is the file's primary (data) sheet."""

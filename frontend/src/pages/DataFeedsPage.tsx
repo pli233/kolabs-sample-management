@@ -69,6 +69,19 @@ export function DataFeedsPage() {
     }
   }
 
+  async function deleteFeed(id: number) {
+    const feed = files.find((f) => f.id === id)
+    if (!window.confirm(`Delete "${feed?.original_filename}"? This cannot be undone.`))
+      return
+    setError(null)
+    try {
+      await api.deleteFeed(id)
+      await refresh()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   return (
     <div className="space-y-10">
       <section className="space-y-4">
@@ -93,7 +106,12 @@ export function DataFeedsPage() {
         <h2 className="font-title text-lg font-semibold text-foreground">
           All feeds
         </h2>
-        <FeedList files={files} activeId={activeId} onSetActive={setActive} />
+        <FeedList
+          files={files}
+          activeId={activeId}
+          onSetActive={setActive}
+          onDelete={deleteFeed}
+        />
       </section>
 
       {pending && (

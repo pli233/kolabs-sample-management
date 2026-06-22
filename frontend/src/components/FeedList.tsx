@@ -1,4 +1,4 @@
-import { CheckCircle2, FileSpreadsheet } from 'lucide-react'
+import { CheckCircle2, FileSpreadsheet, Trash2 } from 'lucide-react'
 import type { FileMeta } from '@/lib/api'
 import { formatBytes } from '@/lib/utils'
 import { fileStatusBadge } from '@/lib/match'
@@ -8,9 +8,10 @@ interface FeedListProps {
   files: FileMeta[]
   activeId: number | null
   onSetActive: (id: number) => void
+  onDelete: (id: number) => void
 }
 
-export function FeedList({ files, activeId, onSetActive }: FeedListProps) {
+export function FeedList({ files, activeId, onSetActive, onDelete }: FeedListProps) {
   if (files.length === 0) {
     return <p className="text-sm text-muted-foreground">No feeds uploaded yet.</p>
   }
@@ -53,6 +54,13 @@ export function FeedList({ files, activeId, onSetActive }: FeedListProps) {
                 Set active
               </Button>
             )}
+            <button
+              onClick={() => onDelete(f.id)}
+              aria-label={`Delete ${f.original_filename}`}
+              className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-[var(--destructive)]"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </li>
         )
       })}

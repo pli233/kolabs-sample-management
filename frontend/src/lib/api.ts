@@ -251,6 +251,12 @@ export const api = {
     URL.revokeObjectURL(url)
   },
 
+  async deleteFeed(id: number): Promise<{ deleted: number; active: number | null }> {
+    return handle<{ deleted: number; active: number | null }>(
+      await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' })
+    )
+  },
+
   async setActiveFeed(id: number): Promise<FileMeta> {
     return handle<FileMeta>(
       await fetch(`${API_BASE}/api/active-feed`, {

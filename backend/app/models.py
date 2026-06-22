@@ -72,12 +72,13 @@ def get_active_file_id() -> int | None:
             return None
 
 
-def set_active_file_id(file_id: int) -> None:
+def set_active_file_id(file_id: int | None) -> None:
+    value = "" if file_id is None else str(file_id)
     with get_session() as session:
         setting = session.get(AppSetting, _ACTIVE_FEED_KEY)
         if setting is None:
-            setting = AppSetting(key=_ACTIVE_FEED_KEY, value=str(file_id))
+            setting = AppSetting(key=_ACTIVE_FEED_KEY, value=value)
         else:
-            setting.value = str(file_id)
+            setting.value = value
         session.add(setting)
         session.commit()
