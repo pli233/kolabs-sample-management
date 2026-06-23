@@ -17,7 +17,7 @@ import {
   type Rectangle,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
-import { X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import {
   api,
   type Cell,
@@ -73,6 +73,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
     []
   )
   const [matchMode, setMatchMode] = useState<'all' | 'any'>('all')
+  const [q, setQ] = useState('')
+  const [qDebounced, setQDebounced] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
@@ -89,17 +91,21 @@ export function DataTableView({ fileId }: { fileId: number }) {
     ? { col: sorting[0].id, dir: sorting[0].desc ? 'desc' : 'asc' }
     : null
 
-  // Debounce the filter conditions.
+  // Debounce the filter conditions and the global search.
   useEffect(() => {
     const t = setTimeout(() => setConditionsDebounced(conditions), 250)
     return () => clearTimeout(t)
   }, [conditions])
+  useEffect(() => {
+    const t = setTimeout(() => setQDebounced(q), 250)
+    return () => clearTimeout(t)
+  }, [q])
 
   const activeFilters = useMemo(
     () => conditionsDebounced.filter(isActive),
     [conditionsDebounced]
   )
-  const filtersKey = JSON.stringify(activeFilters) + matchMode
+  const filtersKey = JSON.stringify(activeFilters) + matchMode + qDebounced
 
   const fetchPage = useCallback(
     async (page: number) => {
@@ -110,6 +116,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
         const res = await api.getRows(fileId, {
           offset: page * PAGE_SIZE,
           limit: PAGE_SIZE,
+          q: qDebounced,
           filters: activeFilters,
           match: matchMode,
           sort: sort?.col ?? null,
@@ -218,6 +225,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
   function exportUrlFor(fmt: 'xlsx' | 'csv') {
     return api.exportUrl(fileId, {
+      q: qDebounced,
       filters: activeFilters,
       match: matchMode,
       sort: sort?.col ?? null,
@@ -253,10 +261,28 @@ export function DataTableView({ fileId }: { fileId: number }) {
     <div className="space-y-3">
       <SchemaBanner sheet={meta} />
 
-      {/* Toolbar: filter + column menu + counts (per-column Filter replaces the
-          old global search box) */}
+      {/* Toolbar: global search + column menu + per-column filters + counts */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
+          <div className="relative w-56 max-w-full">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search all rows…"
+              aria-label="Search all rows"
+              className="h-8 w-full rounded-md border border-border bg-card pl-9 pr-8 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <ColumnMenu table={table} defaultVisible={DEFAULT_VISIBLE} />
 
           {/* Per-column structured filters */}
@@ -271,7 +297,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
-            {activeFilters.length > 0 && `${filtered.toLocaleString()} of `}
+            {(activeFilters.length > 0 || qDebounced) &&
+              `${filtered.toLocaleString()} of `}
             {total.toLocaleString()} rows · {visibleCount} cols
           </span>
           <ExportMenu urlFor={exportUrlFor} />
@@ -328,6 +355,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
               table.setColumnSizing((s) => ({ ...s, [c.id as string]: w }))
             }
             onVisibleRegionChanged={onVisibleRegionChanged}
+            keybindings={{ search: true }}
             rowMarkers="number"
             smoothScrollX
             smoothScrollY

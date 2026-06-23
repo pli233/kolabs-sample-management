@@ -72,13 +72,15 @@ function createWindow() {
   })
 }
 
-// Save exports straight to the user's Downloads folder.
+// Show the native "Save As" dialog (choose location), defaulting to Downloads,
+// then reveal the saved file in Finder.
 function setupDownloads() {
   session.defaultSession.on('will-download', (_e, item) => {
-    const dest = path.join(app.getPath('downloads'), item.getFilename())
-    item.setSavePath(dest)
+    item.setSaveDialogOptions({
+      defaultPath: path.join(app.getPath('downloads'), item.getFilename()),
+    })
     item.once('done', (_evt, state) => {
-      if (state === 'completed') shell.showItemInFolder(dest)
+      if (state === 'completed') shell.showItemInFolder(item.getSavePath())
     })
   })
 }
