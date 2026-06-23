@@ -28,3 +28,7 @@ backend/.e2e/
 # macOS packaging artifacts
 backend/build/
 backend/*.spec
+
+# electron
+electron/node_modules/
+electron/dist/
