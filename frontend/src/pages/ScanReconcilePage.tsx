@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Download, UploadCloud } from 'lucide-react'
+import { CheckCircle2, Download, UploadCloud } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
@@ -34,8 +35,25 @@ export function ScanReconcilePage() {
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Active feed id, for the "Export current feed" action.
+  const [tab, setTab] = useState('')
+  // Active feed id, for the "Export updated feed" action.
   const [activeId, setActiveId] = useState<number | null>(null)
+
+  const tabs = result
+    ? [
+        ...CATEGORIES.filter(
+          ({ key }) => (result[key] as ScanRow[]).length > 0
+        ).map((c) => ({
+          id: c.key as string,
+          label: c.label,
+          count: (result[c.key] as ScanRow[]).length,
+        })),
+        ...(result.fileSummary.length > 1
+          ? [{ id: 'files', label: 'Scan files', count: result.fileSummary.length }]
+          : []),
+      ]
+    : []
+  const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0]
 
   useEffect(() => {
     let ignore = false
@@ -121,68 +139,75 @@ export function ScanReconcilePage() {
       )}
 
       {result && (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#e6f6ee] px-3 py-1 text-sm font-medium text-[#127a48]">
-                {result.correct_matches.toLocaleString()} correct
-              </span>
-              {CATEGORIES.map(({ key, label }) => {
-                const n = (result[key] as ScanRow[]).length
-                return (
-                  <span
-                    key={key}
-                    className={`rounded-full px-3 py-1 text-sm font-medium ${
-                      n > 0
-                        ? 'bg-[var(--warning)] text-[var(--warning-foreground)]'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {label}: {n}
-                  </span>
-                )
-              })}
-            </div>
-            {activeId !== null && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Export all (current feed):
-                </span>
-                <ExportMenu urlFor={(fmt) => api.exportUrl(activeId, { fmt })} />
-              </div>
+        <div className="space-y-4 pb-20">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6f6ee] px-3 py-1 font-medium text-[#127a48]">
+              <CheckCircle2 className="h-4 w-4" />
+              {result.correct_matches.toLocaleString()} correct
+            </span>
+            {tabs.length === 0 && (
+              <span className="text-muted-foreground">No discrepancies found.</span>
             )}
           </div>
 
-          {result.fileSummary.length > 1 && (
-            <section className="space-y-2">
-              <h2 className="font-title text-sm font-semibold text-foreground">
-                Scan files
-              </h2>
-              <GlideTable
-                {...toTable(result.fileSummary)}
-                searchable={false}
-                exportName="scan_files"
-              />
-            </section>
-          )}
+          {tabs.length > 0 && (
+            <>
+              {/* Category tabs — review one issue type at a time */}
+              <div className="flex flex-wrap gap-1 border-b border-border">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                      activeTab?.id === t.id
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {t.label}
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 text-xs',
+                        activeTab?.id === t.id
+                          ? 'bg-sky-100 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
-          {CATEGORIES.map(({ key, label }) => {
-            const catRows = result[key] as ScanRow[]
-            if (catRows.length === 0) return null
-            return (
-              <section key={key} className="space-y-2">
-                <h2 className="font-title text-sm font-semibold text-foreground">
-                  {label}{' '}
-                  <span className="text-muted-foreground">({catRows.length})</span>
-                </h2>
-                {key === 'wrong_location' ? (
-                  <WrongLocationTable rows={catRows} />
-                ) : (
-                  <GlideTable {...toTable(catRows)} exportName={key} />
-                )}
-              </section>
-            )
-          })}
+              {activeTab?.id === 'files' ? (
+                <GlideTable
+                  {...toTable(result.fileSummary)}
+                  searchable={false}
+                  exportName="scan_files"
+                />
+              ) : activeTab?.id === 'wrong_location' ? (
+                <WrongLocationTable rows={result.wrong_location} />
+              ) : activeTab ? (
+                <GlideTable
+                  {...toTable(result[activeTab.id as keyof ScanResult] as ScanRow[])}
+                  exportName={activeTab.id}
+                />
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Floating: export the (possibly edited) active feed, always in reach */}
+      {result && activeId !== null && (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+          <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
+            <span className="text-sm font-medium text-foreground">
+              Updated feed
+            </span>
+            <ExportMenu up urlFor={(fmt) => api.exportUrl(activeId, { fmt })} />
+          </div>
         </div>
       )}
     </div>
