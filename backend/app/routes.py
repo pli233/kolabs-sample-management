@@ -326,12 +326,19 @@ def _active_record() -> FileRecord:
 _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def _xlsx_response(columns: list[str], rows: list[list], filename: str) -> Response:
-    data = export.build_xlsx(columns, rows, sheet_name=filename)
-    fname = quote(f"{filename}.xlsx")
+def _table_response(
+    columns: list[str], rows: list[list], filename: str, fmt: str = "xlsx"
+) -> Response:
+    if fmt == "csv":
+        data = export.build_csv(columns, rows)
+        media, ext = "text/csv; charset=utf-8", "csv"
+    else:
+        data = export.build_xlsx(columns, rows, sheet_name=filename)
+        media, ext = _XLSX_MIME, "xlsx"
+    fname = quote(f"{filename}.{ext}")
     return Response(
         content=data,
-        media_type=_XLSX_MIME,
+        media_type=media,
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"},
     )
 
@@ -464,15 +471,15 @@ def get_rows(
 @router.get("/box-lookup")
 def box_lookup_route(
     box: str = Query(..., min_length=1),
-    format: str = Query("json", pattern="^(json|xlsx)$"),
+    format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy search_box_number: locations + example tubes for a box number,
     against the active feed."""
     sheet = _primary_sheet(_active_record())
     result = box_lookup.lookup_box(sheet, box)
-    if format == "xlsx":
+    if format in ("xlsx", "csv"):
         columns, rows = box_lookup.to_table(result)
-        return _xlsx_response(columns, rows, f"box_{result['box']}_lookup")
+        return _table_response(columns, rows, f"box_{result['box']}_lookup", format)
     return result
 
 
@@ -482,7 +489,7 @@ def qc_sample_route(
     boxes: str = Query(..., min_length=1),
     per_box: int = Query(5, ge=1),
     seed: int | None = Query(None),
-    format: str = Query("json", pattern="^(json|xlsx)$"),
+    format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy make_project_box_qc_list: seeded random QC sample per box."""
     import random as _random
@@ -494,9 +501,9 @@ def qc_sample_route(
 
     sheet = _primary_sheet(_active_record())
     result = qc.qc_sample(sheet, project, box_list, per_box, used_seed)
-    if format == "xlsx":
-        return _xlsx_response(
-            result["columns"], result["rows"], f"qc_{project}_seed{used_seed}"
+    if format in ("xlsx", "csv"):
+        return _table_response(
+            result["columns"], result["rows"], f"qc_{project}_seed{used_seed}", format
         )
     return result
 
@@ -506,7 +513,7 @@ def aliquot_finder_route(
     ids: str = Query(..., min_length=1),
     preferred_freezer: str | None = Query(None),
     backups: int = Query(3, ge=0),
-    format: str = Query("json", pattern="^(json|xlsx)$"),
+    format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person."""
     id_list = aliquot.parse_ids(ids)
@@ -514,8 +521,8 @@ def aliquot_finder_route(
         raise HTTPException(status_code=400, detail="No ids provided")
     sheet = _primary_sheet(_active_record())
     result = aliquot.find_aliquots(sheet, id_list, preferred_freezer, backups)
-    if format == "xlsx":
-        return _xlsx_response(result["columns"], result["rows"], "aliquot_finder")
+    if format in ("xlsx", "csv"):
+        return _table_response(result["columns"], result["rows"], "aliquot_finder", format)
     return result
 
 
@@ -580,8 +587,9 @@ def export_rows(
     sort: str | None = Query(None),
     dir: str = Query("asc"),
     columns: str = Query("", description="comma-separated column subset/order"),
+    fmt: str = Query("xlsx", pattern="^(xlsx|csv)$"),
 ):
-    """Export the current filtered + sorted view as a styled .xlsx download."""
+    """Export the current filtered + sorted view as an .xlsx or .csv download."""
     record = _get_record(file_id)
     sheet = _primary_sheet(record)
     all_columns, rows, _ = _query_rows(sheet, q, filters, match, sort, dir)
@@ -590,13 +598,5 @@ def export_rows(
     idx = [all_columns.index(c) for c in selected]
     out_rows = [[r[i] for i in idx] for r in rows]
 
-    data = export.build_xlsx(selected, out_rows, sheet_name=record.primary_sheet)
     stem = Path(record.original_filename).stem
-    fname = quote(f"{stem}_export.xlsx")
-    return Response(
-        content=data,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{fname}"},
-    )
+    return _table_response(selected, out_rows, f"{stem}_export", fmt)

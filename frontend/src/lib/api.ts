@@ -244,8 +244,8 @@ export const api = {
     )
   },
 
-  boxLookupExportUrl(box: string): string {
-    return `${API_BASE}/api/box-lookup?format=xlsx&box=${encodeURIComponent(box)}`
+  boxLookupExportUrl(box: string, fmt: 'xlsx' | 'csv' = 'xlsx'): string {
+    return `${API_BASE}/api/box-lookup?format=${fmt}&box=${encodeURIComponent(box)}`
   },
 
   async qcSample(p: QcParams): Promise<QcResult> {
@@ -254,9 +254,9 @@ export const api = {
     )
   },
 
-  qcExportUrl(p: QcParams): string {
+  qcExportUrl(p: QcParams, fmt: 'xlsx' | 'csv' = 'xlsx'): string {
     const params = qcQuery(p)
-    params.set('format', 'xlsx')
+    params.set('format', fmt)
     return `${API_BASE}/api/qc-sample?${params.toString()}`
   },
 
@@ -266,9 +266,9 @@ export const api = {
     )
   },
 
-  aliquotExportUrl(p: AliquotParams): string {
+  aliquotExportUrl(p: AliquotParams, fmt: 'xlsx' | 'csv' = 'xlsx'): string {
     const params = aliquotQuery(p)
-    params.set('format', 'xlsx')
+    params.set('format', fmt)
     return `${API_BASE}/api/aliquot-finder?${params.toString()}`
   },
 
@@ -347,7 +347,7 @@ export const api = {
     )
   },
 
-  /** URL that downloads the current filtered/sorted view as a styled .xlsx. */
+  /** URL that downloads the current filtered/sorted view as .xlsx or .csv. */
   exportUrl(
     id: number,
     opts: {
@@ -357,6 +357,7 @@ export const api = {
       sort?: string | null
       dir?: 'asc' | 'desc'
       columns?: string[]
+      fmt?: 'xlsx' | 'csv'
     }
   ): string {
     const params = new URLSearchParams()
@@ -372,6 +373,7 @@ export const api = {
     if (opts.columns && opts.columns.length > 0) {
       params.set('columns', opts.columns.join(','))
     }
+    if (opts.fmt) params.set('fmt', opts.fmt)
     return `${API_BASE}/api/files/${id}/export?${params.toString()}`
   },
 }

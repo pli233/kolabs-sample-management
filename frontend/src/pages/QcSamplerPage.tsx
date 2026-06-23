@@ -131,11 +131,9 @@ export function QcSamplerPage() {
           <DataTable
             columns={result.columns}
             rows={result.rows}
-            onExport={() => {
-              const a = document.createElement('a')
-              a.href = api.qcExportUrl({ ...params(), seed: result.seed })
-              a.click()
-            }}
+            exportUrlFor={(fmt) =>
+              api.qcExportUrl({ ...params(), seed: result.seed }, fmt)
+            }
           />
         </div>
       )}
