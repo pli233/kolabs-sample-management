@@ -1,6 +1,7 @@
-"""Build styled .xlsx workbooks from rows for download (legacy tools deliver xlsx)."""
+"""Build downloadable tables (.xlsx / .csv) from rows."""
 from __future__ import annotations
 
+import csv
 import io
 import re
 
@@ -40,6 +41,16 @@ def build_xlsx(columns: list[str], rows: list[list], sheet_name: str = "Export")
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
+
+
+def build_csv(columns: list[str], rows: list[list]) -> bytes:
+    """A UTF-8 (BOM) CSV so Excel opens non-ASCII text correctly."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(columns)
+    for row in rows:
+        writer.writerow(["" if c is None else c for c in row])
+    return buffer.getvalue().encode("utf-8-sig")
 
 
 def _style_header(ws) -> None:

@@ -10,18 +10,19 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Download, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import type { Cell } from '@/lib/api'
-import { Button } from '@/components/ui/button'
 import { renderCell } from '@/lib/table'
 import { ColumnMenu, VirtualTable } from '@/components/DataTableShell'
+import { ExportMenu } from '@/components/ExportMenu'
 
 interface DataTableProps {
   columns: string[]
   rows: Cell[][]
   /** Columns visible by default (others toggleable); all visible if omitted. */
   defaultVisible?: string[]
-  onExport?: () => void
+  /** When set, shows an Export menu; returns the download URL for a format. */
+  exportUrlFor?: (fmt: 'xlsx' | 'csv') => string
   searchable?: boolean
   maxHeight?: string
   emptyText?: string
@@ -36,7 +37,7 @@ export function DataTable({
   columns,
   rows,
   defaultVisible,
-  onExport,
+  exportUrlFor,
   searchable = true,
   maxHeight = '64vh',
   emptyText = 'No rows.',
@@ -135,16 +136,7 @@ export function DataTable({
             {globalFilter && `${modelRows.length.toLocaleString()} of `}
             {rows.length.toLocaleString()} rows · {visibleCols.length} cols
           </span>
-          {onExport && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onExport}
-              aria-label="Export to Excel"
-            >
-              <Download className="h-4 w-4" /> Export
-            </Button>
-          )}
+          {exportUrlFor && <ExportMenu urlFor={exportUrlFor} />}
         </div>
       </div>
 

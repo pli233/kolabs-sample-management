@@ -8,7 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Download, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   api,
   type Cell,
@@ -20,7 +20,7 @@ import { SchemaBanner } from '@/components/SchemaBanner'
 import { FilterPanel } from '@/components/FilterPanel'
 import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
 import { ColumnMenu, VirtualTable } from '@/components/DataTableShell'
-import { Button } from '@/components/ui/button'
+import { ExportMenu } from '@/components/ExportMenu'
 import { ROW_HEIGHT } from '@/lib/table'
 
 const PAGE_SIZE = 200
@@ -214,18 +214,15 @@ export function DataTableView({ fileId }: { fileId: number }) {
     })
   }
 
-  function handleExport() {
-    const url = api.exportUrl(fileId, {
+  function exportUrlFor(fmt: 'xlsx' | 'csv') {
+    return api.exportUrl(fileId, {
       filters: activeFilters,
       match: matchMode,
       sort: sort?.col ?? null,
       dir: sort?.dir,
       columns: table.getVisibleLeafColumns().map((c) => c.id),
+      fmt,
     })
-    const a = document.createElement('a')
-    a.href = url
-    a.rel = 'noopener'
-    a.click()
   }
 
   const visibleCols = table.getVisibleLeafColumns()
@@ -256,15 +253,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
             {activeFilters.length > 0 && `${filtered.toLocaleString()} of `}
             {total.toLocaleString()} rows · {visibleCount} cols
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            aria-label="Export to Excel"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          <ExportMenu urlFor={exportUrlFor} />
         </div>
       </div>
 

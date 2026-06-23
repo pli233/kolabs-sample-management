@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Download, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { api, type BoxLookupResult, type Cell } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { ExportMenu } from '@/components/ExportMenu'
 
 function show(v: Cell): string {
   if (v === null || v === undefined || v === '') return '—'
@@ -57,17 +58,7 @@ export function BoxLookupPage() {
           {loading ? 'Searching…' : 'Look up'}
         </Button>
         {result && result.locations.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              const a = document.createElement('a')
-              a.href = api.boxLookupExportUrl(result.box)
-              a.click()
-            }}
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
+          <ExportMenu urlFor={(fmt) => api.boxLookupExportUrl(result.box, fmt)} />
         )}
       </form>
 

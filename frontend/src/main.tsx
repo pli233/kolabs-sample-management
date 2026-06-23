@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- entry file: route
+   components are lazy-loaded here; fast refresh doesn't apply to the bootstrap. */
 import { lazy, StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'

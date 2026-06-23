@@ -91,11 +91,7 @@ export function AliquotFinderPage() {
         <DataTable
           columns={result.columns}
           rows={result.rows}
-          onExport={() => {
-            const a = document.createElement('a')
-            a.href = api.aliquotExportUrl(params())
-            a.click()
-          }}
+          exportUrlFor={(fmt) => api.aliquotExportUrl(params(), fmt)}
         />
       )}
     </div>
