@@ -32,3 +32,6 @@ backend/*.spec
 # electron
 electron/node_modules/
 electron/dist/
+
+# scraped brand assets (source files kept outside the repo)
+kolab_logos/

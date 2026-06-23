@@ -61,8 +61,8 @@ function InlineLogo() {
 }
 
 /**
- * Brand lockup. Uses the original brand image at /kolab-logo.png (drop it into
- * frontend/public/) when available, otherwise the inline mark.
+ * Brand lockup. Uses the official white wordmark at /kolab-logo.svg (from
+ * kolaboratory.com), falling back to the inline mark if it fails to load.
  */
 export function Logo({ className }: { className?: string }) {
   const [useImg, setUseImg] = useState(true)
@@ -70,9 +70,9 @@ export function Logo({ className }: { className?: string }) {
     <div className={cn('flex items-center', className)}>
       {useImg ? (
         <img
-          src="/kolab-logo.png"
+          src="/kolab-logo.svg"
           alt="kə lab"
-          className="h-8 w-auto"
+          className="h-7 w-auto"
           onError={() => setUseImg(false)}
         />
       ) : (
