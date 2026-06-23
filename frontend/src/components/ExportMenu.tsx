@@ -13,9 +13,14 @@ const ITEMS: { fmt: 'xlsx' | 'csv'; label: string }[] = [
 export function ExportMenu({
   urlFor,
   onSelect,
+  up = false,
+  label = 'Export',
 }: {
   urlFor?: (fmt: 'xlsx' | 'csv') => string
   onSelect?: (fmt: 'xlsx' | 'csv') => void
+  /** Open the menu upward (for buttons near the bottom of the screen). */
+  up?: boolean
+  label?: string
 }) {
   const [open, setOpen] = useState(false)
   const itemClass =
@@ -30,7 +35,7 @@ export function ExportMenu({
         aria-label="Export"
       >
         <Download className="h-4 w-4" />
-        Export
+        {label}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </Button>
       {open && (
@@ -40,7 +45,9 @@ export function ExportMenu({
             aria-hidden
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-md border border-border bg-card p-1 shadow-lg">
+          <div
+            className={`absolute right-0 z-30 w-44 overflow-hidden rounded-md border border-border bg-card p-1 shadow-lg ${up ? 'bottom-full mb-1' : 'mt-1'}`}
+          >
             {ITEMS.map(({ fmt, label }) =>
               urlFor ? (
                 <a
