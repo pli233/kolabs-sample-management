@@ -171,6 +171,7 @@ export function GlideTable({
             onColumnResize={(c, w) =>
               setWidths((prev) => ({ ...prev, [c.id as string]: w }))
             }
+            keybindings={{ search: true }}
             rowMarkers="number"
             smoothScrollX
             smoothScrollY
