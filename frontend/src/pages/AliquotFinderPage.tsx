@@ -101,7 +101,9 @@ export function AliquotFinderPage() {
           exportName="aliquot_finder"
           rowClassName={(row) => {
             const ci = result.columns.indexOf('choice')
-            return ci >= 0 && row[ci] === 'PRIMARY' ? 'bg-primary/10' : 'bg-white'
+            return ci >= 0 && row[ci] === 'PRIMARY'
+              ? 'bg-sky-100 hover:bg-sky-200'
+              : 'bg-white'
           }}
         />
       )}
