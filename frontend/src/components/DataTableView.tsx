@@ -279,20 +279,34 @@ export function DataTableView({ fileId }: { fileId: number }) {
                   onClick={() => setColMenuOpen(false)}
                 />
                 <div className="absolute left-0 z-30 mt-1 max-h-80 w-60 overflow-auto rounded-md border border-border bg-card p-1 shadow-lg">
-                  <div className="flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground">
-                    <span>Visible columns</span>
-                    <button
-                      className="hover:text-foreground"
-                      onClick={() =>
-                        setColumnVisibility(
-                          Object.fromEntries(
-                            allCols.map((c) => [c.id, DEFAULT_VISIBLE.includes(c.id)])
+                  <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5 text-xs">
+                    <span className="text-muted-foreground">Visible columns</span>
+                    <span className="flex gap-2">
+                      <button
+                        className="text-primary hover:underline"
+                        onClick={() => table.toggleAllColumnsVisible(true)}
+                      >
+                        All
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:underline"
+                        onClick={() => table.toggleAllColumnsVisible(false)}
+                      >
+                        None
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:underline"
+                        onClick={() =>
+                          setColumnVisibility(
+                            Object.fromEntries(
+                              allCols.map((c) => [c.id, DEFAULT_VISIBLE.includes(c.id)])
+                            )
                           )
-                        )
-                      }
-                    >
-                      Reset
-                    </button>
+                        }
+                      >
+                        Default
+                      </button>
+                    </span>
                   </div>
                   {allCols.map((col) => (
                     <label
@@ -321,7 +335,13 @@ export function DataTableView({ fileId }: { fileId: number }) {
             onConditionsChange={setConditions}
             onMatchModeChange={setMatchMode}
           />
+        </div>
 
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {activeFilters.length > 0 && `${filtered.toLocaleString()} of `}
+            {total.toLocaleString()} rows · {visibleCount} cols
+          </span>
           <Button
             variant="outline"
             size="sm"
@@ -331,12 +351,6 @@ export function DataTableView({ fileId }: { fileId: number }) {
             <Download className="h-4 w-4" />
             Export
           </Button>
-        </div>
-
-        <div className="text-sm text-muted-foreground">
-          {activeFilters.length > 0 &&
-            `${filtered.toLocaleString()} of `}
-          {total.toLocaleString()} rows · {visibleCount} cols
         </div>
       </div>
 

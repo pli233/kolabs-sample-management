@@ -1,16 +1,16 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Coronavirus mark used as the "o" in the kə lab brand. */
+/** Coronavirus mark used as the "o" in the kə lab brand (inline fallback). */
 export function VirusMark({ className }: { className?: string }) {
   const cx = 50
   const cy = 50
-  const r1 = 25 // spoke start radius (outside the ring)
-  const r2 = 36 // spoke tip
+  const r1 = 25
+  const r2 = 36
   const spokes = Array.from({ length: 10 }, (_, i) => {
     const a = (i / 10) * Math.PI * 2 - Math.PI / 2
     const dx = Math.cos(a)
     const dy = Math.sin(a)
-    // perpendicular for the dumbbell cap
     const px = -dy
     const py = dx
     const tip = { x: cx + dx * r2, y: cy + dy * r2 }
@@ -46,10 +46,9 @@ export function VirusMark({ className }: { className?: string }) {
   )
 }
 
-/** Full brand lockup for the sidebar. */
-export function Logo({ className }: { className?: string }) {
+function InlineLogo() {
   return (
-    <div className={cn('flex items-center gap-2.5', className)}>
+    <div className="flex items-center gap-2.5">
       <span className="font-title text-2xl font-bold leading-none tracking-tight text-white">
         k
       </span>
@@ -57,6 +56,28 @@ export function Logo({ className }: { className?: string }) {
       <span className="font-title text-2xl font-bold leading-none tracking-tight text-white">
         lab
       </span>
+    </div>
+  )
+}
+
+/**
+ * Brand lockup. Uses the original brand image at /kolab-logo.png (drop it into
+ * frontend/public/) when available, otherwise the inline mark.
+ */
+export function Logo({ className }: { className?: string }) {
+  const [useImg, setUseImg] = useState(true)
+  return (
+    <div className={cn('flex items-center', className)}>
+      {useImg ? (
+        <img
+          src="/kolab-logo.png"
+          alt="kə lab"
+          className="h-8 w-auto"
+          onError={() => setUseImg(false)}
+        />
+      ) : (
+        <InlineLogo />
+      )}
     </div>
   )
 }

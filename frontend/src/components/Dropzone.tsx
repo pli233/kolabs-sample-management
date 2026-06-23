@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { UploadCloud } from 'lucide-react'
+import { Loader2, UploadCloud } from 'lucide-react'
+import type { UploadProgress } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const ACCEPT = {
@@ -12,9 +13,10 @@ const ACCEPT = {
 interface DropzoneProps {
   onFile: (file: File) => void
   disabled?: boolean
+  progress?: UploadProgress | null
 }
 
-export function Dropzone({ onFile, disabled }: DropzoneProps) {
+export function Dropzone({ onFile, disabled, progress }: DropzoneProps) {
   const [error, setError] = useState<string | null>(null)
 
   const onDrop = useCallback(
@@ -53,19 +55,66 @@ export function Dropzone({ onFile, disabled }: DropzoneProps) {
         )}
       >
         <input {...getInputProps()} aria-label="Upload file" />
-        <UploadCloud className="h-10 w-10 text-primary" />
-        <div className="font-title text-base font-semibold text-foreground">
-          {disabled ? 'Uploading…' : 'Drag a file here, or click to choose'}
-        </div>
-        <div className="text-sm text-muted-foreground">
-          .xlsx / .xls / .csv · up to 50 MB
-        </div>
+        {disabled && progress ? (
+          <UploadProgressView progress={progress} />
+        ) : (
+          <>
+            <UploadCloud className="h-10 w-10 text-primary" />
+            <div className="font-title text-base font-semibold text-foreground">
+              {disabled ? 'Uploading…' : 'Drag a file here, or click to choose'}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              .xlsx / .xls / .csv · up to 50 MB
+            </div>
+          </>
+        )}
       </div>
       {error && (
         <p className="mt-2 text-sm text-[var(--destructive)]" role="alert">
           {error}
         </p>
       )}
+    </div>
+  )
+}
+
+function UploadProgressView({ progress }: { progress: UploadProgress }) {
+  const processing = progress.phase === 'processing'
+  const uploadPct = processing ? 100 : Math.round((progress.pct ?? 0) * 100)
+  return (
+    <div className="w-full max-w-md space-y-4">
+      {/* Step 1: file transfer (determinate) */}
+      <div className="space-y-1.5 text-left">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-foreground">
+            {processing ? 'Upload complete' : 'Uploading file'}
+          </span>
+          <span className="text-muted-foreground">{uploadPct}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-150"
+            style={{ width: `${uploadPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Step 2: server-side parsing (indeterminate, starts after upload) */}
+      <div className="space-y-1.5 text-left">
+        <div className="flex items-center gap-1.5 text-sm">
+          {processing && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+          <span
+            className={
+              processing ? 'font-medium text-foreground' : 'text-muted-foreground'
+            }
+          >
+            Processing data…
+          </span>
+        </div>
+        <div className="relative h-2 overflow-hidden rounded-full bg-border">
+          {processing && <div className="bar-indeterminate" />}
+        </div>
+      </div>
     </div>
   )
 }

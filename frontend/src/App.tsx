@@ -67,7 +67,7 @@ export function SidebarLayout() {
         <button
           onClick={() => setTourOpen(true)}
           aria-label="Play feature tour"
-          className="fixed right-5 top-1/2 z-50 inline-flex -translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2.5 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
         >
           <PlayCircle className="h-5 w-5 text-primary" />
           Tour

@@ -158,6 +158,23 @@ export function DataTable({
                   onClick={() => setColMenuOpen(false)}
                 />
                 <div className="absolute left-0 z-30 mt-1 max-h-80 w-60 overflow-auto rounded-md border border-border bg-card p-1 shadow-lg">
+                  <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5 text-xs">
+                    <span className="text-muted-foreground">Visible columns</span>
+                    <span className="flex gap-2">
+                      <button
+                        className="text-primary hover:underline"
+                        onClick={() => table.toggleAllColumnsVisible(true)}
+                      >
+                        All
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:underline"
+                        onClick={() => table.toggleAllColumnsVisible(false)}
+                      >
+                        None
+                      </button>
+                    </span>
+                  </div>
                   {allCols.map((col) => (
                     <label
                       key={col.id}
@@ -177,16 +194,18 @@ export function DataTable({
             )}
           </div>
 
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {globalFilter && `${modelRows.length.toLocaleString()} of `}
+            {rows.length.toLocaleString()} rows · {visibleCols.length} cols
+          </span>
           {onExport && (
             <Button variant="outline" size="sm" onClick={onExport} aria-label="Export to Excel">
               <Download className="h-4 w-4" /> Export
             </Button>
           )}
-        </div>
-
-        <div className="text-sm text-muted-foreground">
-          {globalFilter && `${modelRows.length.toLocaleString()} of `}
-          {rows.length.toLocaleString()} rows · {visibleCols.length} cols
         </div>
       </div>
 

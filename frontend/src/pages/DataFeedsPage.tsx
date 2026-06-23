@@ -3,13 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { Dropzone } from '@/components/Dropzone'
 import { FeedList } from '@/components/FeedList'
 import { SheetPicker } from '@/components/SheetPicker'
-import { api, type FileMeta, type UploadResult } from '@/lib/api'
+import {
+  api,
+  type FileMeta,
+  type UploadProgress,
+  type UploadResult,
+} from '@/lib/api'
 
 export function DataFeedsPage() {
   const navigate = useNavigate()
   const [files, setFiles] = useState<FileMeta[]>([])
   const [activeId, setActiveId] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Multi-sheet uploads pause here to let the user pick the primary sheet.
   const [pending, setPending] = useState<UploadResult | null>(null)
@@ -31,17 +37,20 @@ export function DataFeedsPage() {
   async function handleFile(file: File) {
     setUploading(true)
     setError(null)
+    setProgress({ phase: 'uploading', pct: 0 })
     try {
-      const result = await api.uploadFile(file)
+      const result = await api.uploadFile(file, setProgress)
       if (result.sheets.length > 1) {
         setPending(result) // upload already made it active; pick its primary sheet
         setUploading(false)
+        setProgress(null)
       } else {
         navigate('/dashboard')
       }
     } catch (e) {
       setError((e as Error).message)
       setUploading(false)
+      setProgress(null)
     }
   }
 
@@ -94,7 +103,7 @@ export function DataFeedsPage() {
             upload becomes the active feed; the Dashboard runs against it.
           </p>
         </div>
-        <Dropzone onFile={handleFile} disabled={uploading} />
+        <Dropzone onFile={handleFile} disabled={uploading} progress={progress} />
         {error && (
           <p className="text-sm text-[var(--destructive)]" role="alert">
             {error}

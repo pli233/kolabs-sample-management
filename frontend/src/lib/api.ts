@@ -94,6 +94,12 @@ export interface UploadResult extends FileMeta {
   sheets: SheetChoice[]
 }
 
+export interface UploadProgress {
+  /** 'uploading' = bytes transferring (pct set); 'processing' = server parsing. */
+  phase: 'uploading' | 'processing'
+  pct?: number
+}
+
 export interface BoxLocation {
   location: Record<string, Cell>
   count: number
@@ -180,14 +186,42 @@ async function handle<T>(resp: Response): Promise<T> {
 }
 
 export const api = {
-  async uploadFile(file: File): Promise<UploadResult> {
-    const form = new FormData()
-    form.append('file', file)
-    const resp = await fetch(`${API_BASE}/api/files`, {
-      method: 'POST',
-      body: form,
+  uploadFile(
+    file: File,
+    onProgress?: (p: UploadProgress) => void
+  ): Promise<UploadResult> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/api/files`)
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable)
+          onProgress?.({ phase: 'uploading', pct: e.loaded / e.total })
+      }
+      // Bytes finished transferring; the server is now parsing the workbook.
+      xhr.upload.onload = () => onProgress?.({ phase: 'processing' })
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText) as UploadResult)
+          } catch {
+            reject(new Error('Malformed server response'))
+          }
+        } else {
+          let detail = `Request failed (${xhr.status})`
+          try {
+            const body = JSON.parse(xhr.responseText)
+            if (body?.detail) detail = body.detail
+          } catch {
+            /* ignore */
+          }
+          reject(new Error(detail))
+        }
+      }
+      xhr.onerror = () => reject(new Error('Network error during upload'))
+      const form = new FormData()
+      form.append('file', file)
+      xhr.send(form)
     })
-    return handle<UploadResult>(resp)
   },
 
   async listFiles(): Promise<FileMeta[]> {
