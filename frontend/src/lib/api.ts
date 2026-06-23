@@ -347,10 +347,6 @@ export const api = {
     )
   },
 
-  rawUrl(id: number): string {
-    return `${API_BASE}/api/files/${id}/raw`
-  },
-
   /** URL that downloads the current filtered/sorted view as a styled .xlsx. */
   exportUrl(
     id: number,

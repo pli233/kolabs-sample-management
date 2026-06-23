@@ -1,7 +1,8 @@
 # Render Blueprint — free Docker web service.
 # Deploy: push to GitHub, then render.com → New → Blueprint → pick this repo.
-# Note: free plan has an ephemeral disk and sleeps when idle, so the SQLite DB
-# and uploaded feeds reset on restart/redeploy (re-upload after a cold start).
+# Set DB_URL to your Supabase Postgres connection string (the Blueprint prompts
+# for it). Parsed data lives in the DB, so no disk is needed and the free plan's
+# ephemeral filesystem is fine — feeds persist in Supabase across restarts.
 services:
   - type: web
     name: kolabs-sample-management
@@ -9,3 +10,6 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     autoDeploy: true
+    envVars:
+      - key: DB_URL
+        sync: false  # paste your Supabase connection string in the dashboard
