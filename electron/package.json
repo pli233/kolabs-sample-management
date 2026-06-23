@@ -15,6 +15,7 @@
   "build": {
     "appId": "com.kolabs.samplemanagement",
     "productName": "Kolabs Sample Management",
+    "afterPack": "afterPack.cjs",
     "files": ["main.cjs"],
     "extraResources": [
       { "from": "../backend/dist/kolabs-backend", "to": "backend" }
