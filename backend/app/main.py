@@ -1,6 +1,7 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -37,7 +38,11 @@ def health() -> dict:
 
 # In production the built SPA is served from the same origin as the API.
 # frontend/dist is created by `npm run build`; absent in local API-only dev.
-_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+# In the packaged Mac app PyInstaller unpacks it under sys._MEIPASS.
+if getattr(sys, "frozen", False):
+    _FRONTEND_DIST = Path(sys._MEIPASS) / "frontend" / "dist"  # type: ignore[attr-defined]
+else:
+    _FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if _FRONTEND_DIST.is_dir():
     _assets = _FRONTEND_DIST / "assets"
     if _assets.is_dir():
