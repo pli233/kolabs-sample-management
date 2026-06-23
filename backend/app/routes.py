@@ -90,10 +90,13 @@ class ApplyPositionBody(BaseModel):
     sample_pos: str | None = None
 
 
-@router.post("/reconcile/apply-position")
-def apply_position(body: ApplyPositionBody):
-    """Reconcile fix: set a record's box/sample_pos in the active feed to the
-    scanned location, persisting the change to the database."""
+class ApplyPositionsBody(BaseModel):
+    items: list[ApplyPositionBody]
+
+
+def _apply_positions(items: list[ApplyPositionBody]) -> int:
+    """Write box/sample_pos for the given records into the active feed (one DB
+    write). Used by single and batch apply, and by revoke (expected values)."""
     record = _active_record()
     parsed = storage.load_parsed(record.id, record.parsed_json)
     sheets = parsed["sheets"]
@@ -109,30 +112,44 @@ def apply_position(body: ApplyPositionBody):
     if ri is None:
         raise HTTPException(status_code=400, detail="Feed has no record_id column")
 
-    target = next(
-        (r for r in sheet["rows"] if str(r[ri]) == str(body.record_id)), None
-    )
-    if target is None:
+    by_id: dict[str, list] = {}
+    for r in sheet["rows"]:
+        by_id.setdefault(str(r[ri]), r)
+
+    applied = 0
+    for it in items:
+        target = by_id.get(str(it.record_id))
+        if target is None:
+            continue
+        if it.box is not None and bi is not None:
+            target[bi] = it.box
+        if it.sample_pos is not None and pi is not None:
+            target[pi] = it.sample_pos
+        applied += 1
+
+    if applied:
+        new_json = storage.dump_parsed(sheets)
+        with get_session() as session:
+            rec = session.get(FileRecord, record.id)
+            rec.parsed_json = new_json
+            session.add(rec)
+            session.commit()
+        storage.clear_cache()
+    return applied
+
+
+@router.post("/reconcile/apply-position")
+def apply_position(body: ApplyPositionBody):
+    """Reconcile fix for one record (write box/sample_pos to the active feed)."""
+    if _apply_positions([body]) == 0:
         raise HTTPException(status_code=404, detail="record_id not found in feed")
+    return {"applied": 1}
 
-    if body.box is not None and bi is not None:
-        target[bi] = body.box
-    if body.sample_pos is not None and pi is not None:
-        target[pi] = body.sample_pos
 
-    new_json = storage.dump_parsed(sheets)
-    with get_session() as session:
-        rec = session.get(FileRecord, record.id)
-        rec.parsed_json = new_json
-        session.add(rec)
-        session.commit()
-    storage.clear_cache()
-
-    return {
-        "record_id": str(body.record_id),
-        "box": target[bi] if bi is not None else None,
-        "sample_pos": target[pi] if pi is not None else None,
-    }
+@router.post("/reconcile/apply-positions")
+def apply_positions(body: ApplyPositionsBody):
+    """Batch apply: write many records' box/sample_pos in one DB write."""
+    return {"applied": _apply_positions(body.items)}
 
 
 @router.post("/files")
