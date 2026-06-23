@@ -89,17 +89,21 @@ export function BoxLookupPage() {
               key={i}
               className="overflow-hidden rounded-lg border border-border bg-card"
             >
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border bg-muted px-4 py-2.5 text-sm">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted px-4 py-2.5">
                 {result.locationColumns
                   .filter((c) => {
                     const v = loc.location[c]
                     return v !== null && v !== undefined && v !== ''
                   })
-                  .map((c, k) => (
-                    <span key={c} className="flex items-center gap-1.5">
-                      {k > 0 && <span className="text-muted-foreground/50">›</span>}
-                      <span className="text-xs text-muted-foreground">{c}</span>
-                      <span className="font-medium text-foreground">
+                  .map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-sm"
+                    >
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {c}
+                      </span>
+                      <span className="font-semibold text-foreground">
                         {show(loc.location[c])}
                       </span>
                     </span>
