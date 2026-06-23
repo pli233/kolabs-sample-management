@@ -94,6 +94,7 @@ export function ScanReconcilePage() {
 
       <div className="space-y-3">
         <label
+          data-tour="scan-dropzone"
           className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 px-6 py-10 text-center transition-colors hover:border-primary/60 hover:bg-muted"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -121,7 +122,7 @@ export function ScanReconcilePage() {
           />
         </label>
         <div className="flex items-center gap-3">
-          <Button onClick={run} disabled={loading || files.length === 0}>
+          <Button data-tour="reconcile" onClick={run} disabled={loading || files.length === 0}>
             {loading ? 'Reconciling…' : 'Reconcile'}
           </Button>
           {result && (
