@@ -3,7 +3,7 @@ import { api, type AliquotParams, type ToolTable } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DataTable } from '@/components/DataTable'
+import { GlideTable } from '@/components/GlideTable'
 
 export function AliquotFinderPage() {
   const [ids, setIds] = usePersistentState('aliquot.ids', '')
@@ -109,15 +109,13 @@ export function AliquotFinderPage() {
       )}
 
       {result && (
-        <DataTable
+        <GlideTable
           columns={result.columns}
           rows={result.rows}
           exportName="aliquot_finder"
-          rowClassName={(row) => {
+          rowTint={(row) => {
             const ci = result.columns.indexOf('choice')
-            return ci >= 0 && row[ci] === 'PRIMARY'
-              ? 'bg-sky-100 hover:bg-sky-200'
-              : 'bg-white'
+            return ci >= 0 && row[ci] === 'PRIMARY' ? '#e0f2fe' : undefined
           }}
         />
       )}

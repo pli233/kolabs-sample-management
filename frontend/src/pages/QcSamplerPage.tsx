@@ -3,7 +3,7 @@ import { api, type QcParams, type QcResult } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DataTable } from '@/components/DataTable'
+import { GlideTable } from '@/components/GlideTable'
 
 export function QcSamplerPage() {
   const [project, setProject] = usePersistentState('qc.project', '')
@@ -129,7 +129,7 @@ export function QcSamplerPage() {
             ))}
           </div>
 
-          <DataTable
+          <GlideTable
             columns={result.columns}
             rows={result.rows}
             exportName={`qc_${project.trim() || 'sample'}_seed${result.seed}`}
