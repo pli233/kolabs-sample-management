@@ -15,7 +15,6 @@ export function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false
-    setOverview(null)
     api
       .getActiveFeed()
       .then((r) => {

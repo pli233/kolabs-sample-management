@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { api, type AliquotParams, type ToolTable } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/DataTable'
-
-const inputCls =
-  'rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary'
 
 export function AliquotFinderPage() {
   const [ids, setIds] = useState('')
@@ -53,28 +51,28 @@ export function AliquotFinderPage() {
           placeholder="Paste IDs, separated by spaces, commas, or newlines&#10;e.g. 425280.01  416180  418150.02"
           aria-label="IDs"
           rows={3}
-          className={`${inputCls} w-full max-w-2xl font-mono`}
+          className="w-full max-w-2xl rounded-md border border-border bg-card px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Preferred freezer (optional)
-            <input
+            <Input
               value={preferredFreezer}
               onChange={(e) => setPreferredFreezer(e.target.value)}
               placeholder="any"
               aria-label="Preferred freezer"
-              className={`${inputCls} h-9 w-32 py-0`}
+              className="w-32"
             />
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Backups
-            <input
+            <Input
               type="number"
               min={0}
               value={backups}
               onChange={(e) => setBackups(Math.max(0, Number(e.target.value)))}
               aria-label="Backups"
-              className={`${inputCls} h-9 w-20 py-0`}
+              className="w-20"
             />
           </label>
           <Button type="submit" disabled={loading || !ids.trim()}>

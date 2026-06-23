@@ -22,17 +22,33 @@ export function DataFeedsPage() {
   const [savingPrimary, setSavingPrimary] = useState(false)
 
   const refresh = useCallback(async () => {
-    const [list, feed] = await Promise.all([
-      api.listFiles(),
-      api.getActiveFeed(),
-    ])
-    setFiles(list)
-    setActiveId(feed.active?.id ?? null)
+    try {
+      const [list, feed] = await Promise.all([
+        api.listFiles(),
+        api.getActiveFeed(),
+      ])
+      setFiles(list)
+      setActiveId(feed.active?.id ?? null)
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }, [])
 
   useEffect(() => {
-    refresh().catch((e) => setError((e as Error).message))
-  }, [refresh])
+    let ignore = false
+    Promise.all([api.listFiles(), api.getActiveFeed()])
+      .then(([list, feed]) => {
+        if (ignore) return
+        setFiles(list)
+        setActiveId(feed.active?.id ?? null)
+      })
+      .catch((e) => {
+        if (!ignore) setError((e as Error).message)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   async function handleFile(file: File) {
     setUploading(true)
