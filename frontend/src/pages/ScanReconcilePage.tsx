@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/DataTable'
+import { ExportMenu } from '@/components/ExportMenu'
+import { WrongLocationTable } from '@/components/WrongLocationTable'
 
 const CATEGORIES: { key: keyof ScanResult; label: string }[] = [
   { key: 'scan_not_in_database', label: 'Scanned, not in database' },
@@ -32,6 +34,19 @@ export function ScanReconcilePage() {
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Active feed id, for the "Export current feed" action.
+  const [activeId, setActiveId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let ignore = false
+    api
+      .getActiveFeed()
+      .then((r) => !ignore && setActiveId(r.active?.id ?? null))
+      .catch(() => {})
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   async function run() {
     if (files.length === 0) return
@@ -139,11 +154,22 @@ export function ScanReconcilePage() {
             if (catRows.length === 0) return null
             return (
               <section key={key} className="space-y-2">
-                <h2 className="font-title text-sm font-semibold text-foreground">
-                  {label}{' '}
-                  <span className="text-muted-foreground">({catRows.length})</span>
-                </h2>
-                <DataTable {...toTable(catRows)} maxHeight="48vh" exportName={key} />
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-title text-sm font-semibold text-foreground">
+                    {label}{' '}
+                    <span className="text-muted-foreground">({catRows.length})</span>
+                  </h2>
+                  {key === 'wrong_location' && activeId !== null && (
+                    <ExportMenu
+                      urlFor={(fmt) => api.exportUrl(activeId, { fmt })}
+                    />
+                  )}
+                </div>
+                {key === 'wrong_location' ? (
+                  <WrongLocationTable rows={catRows} />
+                ) : (
+                  <DataTable {...toTable(catRows)} maxHeight="48vh" exportName={key} />
+                )}
               </section>
             )
           })}
