@@ -5,32 +5,16 @@ import {
   type GridCell,
   type GridColumn,
   type Item,
-  type Theme,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import { Search, X } from 'lucide-react'
 import { api, type Cell } from '@/lib/api'
 import { ExportMenu } from '@/components/ExportMenu'
+import { GLIDE_THEME } from '@/lib/glideTheme'
 
 const ROW_H = 34
 const HEADER_H = 36
 const MAX_H = 560
-
-const THEME: Partial<Theme> = {
-  accentColor: '#0e8ed6',
-  accentLight: '#e0f2fe',
-  textDark: '#060f1c',
-  textMedium: '#4e5561',
-  textHeader: '#303643',
-  bgCell: '#ffffff',
-  bgHeader: '#f2f4f7',
-  bgHeaderHovered: '#e7ebf1',
-  bgHeaderHasFocus: '#e7ebf1',
-  borderColor: '#e5e7eb',
-  fontFamily: 'Inter, system-ui, sans-serif',
-  baseFontStyle: '13px',
-  headerFontStyle: '600 12px',
-}
 
 function text(v: Cell): string {
   if (v === null || v === undefined) return ''
@@ -178,7 +162,7 @@ export function GlideTable({
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">
           <DataEditor
-            theme={THEME}
+            theme={GLIDE_THEME}
             columns={gridColumns}
             rows={view.length}
             getCellContent={getCellContent}
