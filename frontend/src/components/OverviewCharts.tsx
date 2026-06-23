@@ -52,6 +52,10 @@ function ChartCard({
       {data.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No data</p>
       ) : (
+        <>
+        <p className="sr-only">
+          {`${title}: ${data.map((d) => `${d.name} ${d.count}`).join(', ')}`}
+        </p>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eef1f5" vertical={false} />
@@ -79,13 +83,19 @@ function ChartCard({
                 fontSize: 12,
               }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
+            <Bar
+              dataKey="count"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={48}
+              isAnimationActive={false}
+            >
               {data.map((_, i) => (
                 <RCell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </>
       )}
     </div>
   )

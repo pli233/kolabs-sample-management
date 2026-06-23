@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { api, type QcParams, type QcResult } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/DataTable'
-
-const inputCls =
-  'h-9 rounded-md border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary'
 
 export function QcSamplerPage() {
   const [project, setProject] = useState('')
@@ -56,43 +54,43 @@ export function QcSamplerPage() {
       <form onSubmit={run} className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Project
-          <input
+          <Input
             value={project}
             onChange={(e) => setProject(e.target.value)}
             placeholder="L37"
             aria-label="Project"
-            className={`${inputCls} w-28`}
+            className="w-28"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Boxes
-          <input
+          <Input
             value={boxes}
             onChange={(e) => setBoxes(e.target.value)}
             placeholder="716-719,722"
             aria-label="Boxes"
-            className={`${inputCls} w-44`}
+            className="w-44"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Per box
-          <input
+          <Input
             type="number"
             min={1}
             value={perBox}
             onChange={(e) => setPerBox(Math.max(1, Number(e.target.value)))}
             aria-label="Per box"
-            className={`${inputCls} w-20`}
+            className="w-20"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Seed (optional)
-          <input
+          <Input
             value={seed}
             onChange={(e) => setSeed(e.target.value)}
             placeholder="auto"
             aria-label="Seed"
-            className={`${inputCls} w-28`}
+            className="w-28"
           />
         </label>
         <Button type="submit" disabled={loading || !project.trim() || !boxes.trim()}>

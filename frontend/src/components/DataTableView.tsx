@@ -8,14 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronsUpDown,
-  Columns3,
-  Download,
-  X,
-} from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import {
   api,
   type Cell,
@@ -24,16 +17,12 @@ import {
   type SheetIssue,
 } from '@/lib/api'
 import { SchemaBanner } from '@/components/SchemaBanner'
-import {
-  FILTER_OPS,
-  FilterPanel,
-  isActive,
-  opNeedsValue,
-} from '@/components/FilterPanel'
+import { FilterPanel } from '@/components/FilterPanel'
+import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
+import { ColumnMenu, VirtualTable } from '@/components/DataTableShell'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { ROW_HEIGHT } from '@/lib/table'
 
-const ROW_HEIGHT = 36
 const PAGE_SIZE = 200
 
 // Columns shown by default (others are toggled on via the column menu).
@@ -63,12 +52,6 @@ interface Meta {
 
 const EMPTY_DATA: Cell[][] = []
 
-function renderCell(value: Cell): string {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  return String(value)
-}
-
 export function DataTableView({ fileId }: { fileId: number }) {
   const [meta, setMeta] = useState<Meta | null>(null)
   const [total, setTotal] = useState(0)
@@ -83,7 +66,6 @@ export function DataTableView({ fileId }: { fileId: number }) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
-  const [colMenuOpen, setColMenuOpen] = useState(false)
   const [, setVersion] = useState(0)
 
   const rowsRef = useRef<Record<number, Cell[]>>({})
@@ -246,11 +228,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
     a.click()
   }
 
-  const headers = table.getHeaderGroups()[0].headers
   const visibleCols = table.getVisibleLeafColumns()
-  const totalWidth = visibleCols.reduce((s, c) => s + c.getSize(), 0)
-  const allCols = table.getAllLeafColumns()
-  const visibleCount = allCols.filter((c) => c.getIsVisible()).length
+  const visibleCount = visibleCols.length
 
   return (
     <div className="space-y-3">
@@ -260,72 +239,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
           old global search box) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {/* Column visibility menu */}
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setColMenuOpen((o) => !o)}
-              aria-label="Choose visible columns"
-            >
-              <Columns3 className="h-4 w-4" />
-              Columns ({visibleCount}/{allCols.length})
-            </Button>
-            {colMenuOpen && (
-              <>
-                <button
-                  className="fixed inset-0 z-20 cursor-default"
-                  aria-hidden
-                  onClick={() => setColMenuOpen(false)}
-                />
-                <div className="absolute left-0 z-30 mt-1 max-h-80 w-60 overflow-auto rounded-md border border-border bg-card p-1 shadow-lg">
-                  <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5 text-xs">
-                    <span className="text-muted-foreground">Visible columns</span>
-                    <span className="flex gap-2">
-                      <button
-                        className="text-primary hover:underline"
-                        onClick={() => table.toggleAllColumnsVisible(true)}
-                      >
-                        All
-                      </button>
-                      <button
-                        className="text-muted-foreground hover:underline"
-                        onClick={() => table.toggleAllColumnsVisible(false)}
-                      >
-                        None
-                      </button>
-                      <button
-                        className="text-muted-foreground hover:underline"
-                        onClick={() =>
-                          setColumnVisibility(
-                            Object.fromEntries(
-                              allCols.map((c) => [c.id, DEFAULT_VISIBLE.includes(c.id)])
-                            )
-                          )
-                        }
-                      >
-                        Default
-                      </button>
-                    </span>
-                  </div>
-                  {allCols.map((col) => (
-                    <label
-                      key={col.id}
-                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={col.getIsVisible()}
-                        onChange={col.getToggleVisibilityHandler()}
-                        className="accent-[var(--primary)]"
-                      />
-                      <span className="truncate">{col.id}</span>
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          <ColumnMenu table={table} defaultVisible={DEFAULT_VISIBLE} />
 
           {/* Per-column structured filters */}
           <FilterPanel
@@ -386,108 +300,20 @@ export function DataTableView({ fileId }: { fileId: number }) {
         </div>
       )}
 
-      {/* Centered table */}
-      <div
-        ref={parentRef}
-        className="mx-auto max-h-[70vh] max-w-full overflow-auto rounded-lg border border-border bg-card"
-        style={{ width: totalWidth }}
-      >
-        <div style={{ width: totalWidth }}>
-          {/* Sticky, sortable, resizable header */}
-          <div className="sticky top-0 z-10 flex border-b border-border bg-muted">
-            {headers.map((header) => {
-              const dir = sort?.col === header.column.id ? sort.dir : null
-              return (
-                <div
-                  key={header.id}
-                  data-testid={`col-${header.column.id}`}
-                  className="relative flex shrink-0 items-center"
-                  style={{ width: header.getSize() }}
-                >
-                  <button
-                    onClick={() => toggleSort(header.column.id)}
-                    title={header.column.id}
-                    className="flex w-full items-center gap-1 px-3 py-2 text-left font-title text-xs font-semibold text-foreground hover:bg-[#e7ebf1]"
-                  >
-                    <span className="truncate">{header.column.id}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {dir === 'asc' ? (
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      ) : dir === 'desc' ? (
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
-                      )}
-                    </span>
-                  </button>
-                  {/* Drag handle to resize the column */}
-                  <div
-                    data-testid={`resize-${header.column.id}`}
-                    onMouseDown={header.getResizeHandler()}
-                    onTouchStart={header.getResizeHandler()}
-                    className={cn(
-                      'absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none select-none bg-transparent hover:bg-primary/40',
-                      header.column.getIsResizing() && 'bg-primary'
-                    )}
-                  />
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Virtualized rows */}
-          <div
-            style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}
-          >
-            {virtualItems.map((virtualRow) => {
-              const row = rowsRef.current[virtualRow.index]
-              return (
-                <div
-                  key={virtualRow.key}
-                  className={cn(
-                    'flex border-b border-border/60 hover:bg-muted/50',
-                    virtualRow.index % 2 === 1 && 'bg-muted/20'
-                  )}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: totalWidth,
-                    height: ROW_HEIGHT,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
-                  {row ? (
-                    visibleCols.map((col) => {
-                      const text = renderCell(row[colIndex[col.id]])
-                      return (
-                        <div
-                          key={col.id}
-                          className="shrink-0 truncate px-3 py-2 text-sm text-foreground"
-                          style={{ width: col.getSize() }}
-                          title={text}
-                        >
-                          {text}
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-muted-foreground/60">
-                      Loading…
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {filtered === 0 && (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              No rows match the current filters
-            </div>
-          )}
-        </div>
-      </div>
+      <VirtualTable
+        table={table}
+        parentRef={parentRef}
+        virtualItems={virtualItems}
+        totalSize={rowVirtualizer.getTotalSize()}
+        colIndex={colIndex}
+        getRow={(i) => rowsRef.current[i]}
+        sortDir={(id) => (sort?.col === id ? sort.dir : null)}
+        onToggleSort={toggleSort}
+        isEmpty={filtered === 0}
+        emptyText="No rows match the current filters"
+        fit
+        maxHeight="70vh"
+      />
     </div>
   )
 }
