@@ -4,6 +4,20 @@
 export const API_BASE: string =
   (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
+/** Trigger a browser "save" for a Blob. The anchor must be in the DOM and the
+ *  object URL must outlive the click, or some browsers abort the download. */
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 export interface SheetIssue {
   type: string
   column: string
@@ -289,13 +303,7 @@ export const api = {
       body: form,
     })
     if (!resp.ok) throw new Error(`Export failed (${resp.status})`)
-    const blob = await resp.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'scan_reconcile.xlsx'
-    a.click()
-    URL.revokeObjectURL(url)
+    saveBlob(await resp.blob(), 'scan_reconcile.xlsx')
   },
 
   /** Reconcile fix: write a record's box/position in the active feed to the
@@ -380,13 +388,7 @@ export const api = {
       body: JSON.stringify({ columns, rows, filename, fmt }),
     })
     if (!resp.ok) throw new Error(`Export failed (${resp.status})`)
-    const blob = await resp.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${filename}.${fmt}`
-    a.click()
-    URL.revokeObjectURL(url)
+    saveBlob(await resp.blob(), `${filename}.${fmt}`)
   },
 
   /** URL that downloads the current filtered/sorted view as .xlsx or .csv. */

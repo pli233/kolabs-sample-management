@@ -1,0 +1,28 @@
+{
+  "name": "kolabs-desktop",
+  "version": "1.0.0",
+  "description": "Kolabs Sample Management desktop app (Electron + Python sidecar)",
+  "main": "main.cjs",
+  "author": "Kolabs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kolabs.samplemanagement",
+    "productName": "Kolabs Sample Management",
+    "files": ["main.cjs"],
+    "extraResources": [
+      { "from": "../backend/dist/kolabs-backend", "to": "backend" }
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "identity": null
+    }
+  }
+}

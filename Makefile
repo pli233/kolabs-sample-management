@@ -49,6 +49,12 @@ lint: ## Typecheck + eslint the frontend
 build: ## Build the SPA into frontend/dist
 	cd $(FRONTEND) && npm run build
 
+electron-install: ## Install Electron deps (once)
+	cd electron && npm install
+
+electron: build ## Run the desktop app in dev (Electron + Python sidecar)
+	cd electron && npm start
+
 dmg: ## Build the macOS .app + .dmg (Apple Silicon) -> backend/dist/
 	cd $(BACKEND) && ./build_dmg.sh
 
