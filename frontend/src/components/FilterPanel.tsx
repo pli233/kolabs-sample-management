@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Filter, Plus, Trash2 } from 'lucide-react'
 import type { FilterCondition, FilterOp } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -46,7 +46,37 @@ export function FilterPanel({
   onMatchModeChange,
 }: FilterPanelProps) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(
+    null
+  )
   const activeCount = conditions.filter(isActive).length
+
+  // Position the popover under the trigger, clamped to stay clear of the fixed
+  // sidebar (left) and the viewport edge (right).
+  useLayoutEffect(() => {
+    if (!open) return
+    function place() {
+      const el = triggerRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      const SIDEBAR = 224
+      const GAP = 8
+      const width = Math.min(544, window.innerWidth - SIDEBAR - GAP * 2)
+      const left = Math.max(
+        SIDEBAR + GAP,
+        Math.min(r.left, window.innerWidth - width - GAP)
+      )
+      setPos({ left, top: r.bottom + 4, width })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
 
   function update(i: number, patch: Partial<FilterCondition>) {
     onConditionsChange(
@@ -64,7 +94,7 @@ export function FilterPanel({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={triggerRef}>
       <Button
         variant="outline"
         size="sm"
@@ -87,7 +117,14 @@ export function FilterPanel({
             aria-hidden
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-30 mt-1 w-[34rem] max-w-[92vw] rounded-md border border-border bg-card p-3 shadow-lg">
+          <div
+            className="fixed z-30 rounded-md border border-border bg-card p-3 shadow-lg"
+            style={
+              pos
+                ? { left: pos.left, top: pos.top, width: pos.width }
+                : { left: 240, top: 120, width: 544 }
+            }
+          >
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Match</span>

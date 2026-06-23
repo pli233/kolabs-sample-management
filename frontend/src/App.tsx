@@ -29,8 +29,8 @@ export function SidebarLayout() {
   const steps = tourFor(pathname)
 
   return (
-    <div className="flex min-h-full bg-background">
-      <aside className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-[var(--midnight)] px-3 py-4">
+    <div className="min-h-screen bg-background">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col gap-1 overflow-y-auto border-r border-border bg-[var(--midnight)] px-3 py-4">
         <div className="mb-5 px-2">
           <Logo />
           <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white/45">
@@ -56,7 +56,7 @@ export function SidebarLayout() {
         ))}
       </aside>
 
-      <main className="min-w-0 flex-1 px-6 py-8">
+      <main className="ml-56 min-w-0 px-6 py-8">
         <div className="mx-auto max-w-6xl">
           <Outlet />
         </div>
