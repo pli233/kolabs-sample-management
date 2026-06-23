@@ -1,9 +1,11 @@
-def test_save_and_read_roundtrip(app_env):
+def test_dump_and_load_parsed_roundtrip(app_env):
     import app.storage as storage
 
-    payload = b"hello-bytes-\x00\x01"
-    path = storage.save_upload("foo.xlsx", payload)
-    assert storage.read_raw(path) == payload
+    sheets = [{"name": "S1", "columns": ["a"], "rows": [[1], [2]]}]
+    blob = storage.dump_parsed(sheets)
+    assert storage.load_parsed(1, blob)["sheets"] == sheets
+    # Second call hits the in-memory LRU and returns the same object.
+    assert storage.load_parsed(1, blob) is storage.load_parsed(1, blob)
 
 
 def test_filerecord_insert_and_query(app_env):
@@ -12,8 +14,7 @@ def test_filerecord_insert_and_query(app_env):
     with models.get_session() as session:
         rec = models.FileRecord(
             original_filename="x.xlsx",
-            stored_path="/tmp/x.xlsx",
-            cache_path="/tmp/x.xlsx.parsed.json",
+            parsed_json='{"sheets": []}',
             size=10,
             content_type="application/octet-stream",
             sheet_count=2,

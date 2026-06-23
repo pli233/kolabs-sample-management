@@ -63,13 +63,6 @@ def test_list_contains_uploaded(client, sample_xlsx_path):
     assert items[0]["schema_type"] == "main_library"
 
 
-def test_raw_matches_original(client, sample_xlsx_path):
-    up = _upload_sample(client, sample_xlsx_path).json()
-    resp = client.get(f"/api/files/{up['id']}/raw")
-    assert resp.status_code == 200
-    assert resp.content == sample_xlsx_path.read_bytes()
-
-
 def test_rows_paginates_full_dataset(client, sample_xlsx_path):
     up = _upload_sample(client, sample_xlsx_path).json()
     fid = up["id"]
@@ -221,5 +214,4 @@ def test_set_active_feed_missing_404(client):
 
 def test_missing_file_404(client):
     assert client.get("/api/files/9999").status_code == 404
-    assert client.get("/api/files/9999/raw").status_code == 404
     assert client.get("/api/files/9999/rows").status_code == 404

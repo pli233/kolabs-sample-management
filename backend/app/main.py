@@ -27,7 +27,6 @@ app.include_router(router)
 
 @app.on_event("startup")
 def _startup() -> None:
-    settings.ensure_dirs()
     init_db()
 
 

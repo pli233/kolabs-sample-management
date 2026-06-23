@@ -1,8 +1,8 @@
 """Shared pytest fixtures.
 
-Each test gets an isolated UPLOAD_DIR and SQLite DB via env vars. Settings read
-env lazily, so no module reloading is needed — we just reset the cached engine
-and recreate tables against the fresh DB.
+Each test gets an isolated SQLite DB via env var. Settings read env lazily, so no
+module reloading is needed — we just reset the cached engine and recreate tables
+against the fresh DB.
 """
 from __future__ import annotations
 
@@ -22,15 +22,13 @@ def sample_xlsx_path() -> Path:
 
 @pytest.fixture
 def app_env(tmp_path, monkeypatch):
-    """Isolate storage + DB for one test."""
-    monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
+    """Isolate the DB for one test."""
     monkeypatch.setenv("DB_URL", f"sqlite:///{tmp_path / 'test.db'}")
 
     import app.main as main
     import app.models as models
 
     models.reset_engine()
-    main.settings.ensure_dirs()
     models.init_db()
     yield main
     models.reset_engine()

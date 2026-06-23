@@ -18,10 +18,8 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ ./backend/
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 
-# Persistent volume mount point (configure on the host platform).
-ENV UPLOAD_DIR=/data/uploads \
-    DB_URL=sqlite:////data/app.db
-RUN mkdir -p /data/uploads
+# No disk needed: parsed data lives in the database. Set DB_URL on the host
+# (e.g. a Supabase Postgres connection string). Defaults to local SQLite.
 
 WORKDIR /app/backend
 EXPOSE 8000

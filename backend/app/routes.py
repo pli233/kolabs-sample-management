@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from urllib.parse import quote
 
@@ -82,14 +84,17 @@ async def upload_file(file: UploadFile):
     if len(data) == 0:
         raise HTTPException(status_code=422, detail="Empty file")
 
-    stored_path = storage.save_upload(file.filename or f"upload{ext}", data)
-
+    # Parse from a temp file (openpyxl/csv read a path), then delete it — the
+    # parsed result is stored in the DB, so nothing persists on disk.
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
     try:
-        sheets = parsing.parse_file(stored_path, ext)
+        sheets = parsing.parse_file(tmp_path, ext)
     except Exception as exc:  # noqa: BLE001 - surface a readable parse error
         raise HTTPException(status_code=422, detail=f"Could not parse file: {exc}") from exc
-
-    cache_path = storage.save_parsed(stored_path, sheets)
+    finally:
+        os.unlink(tmp_path)
 
     default_primary = _pick_default_primary(sheets)
     primary_name = default_primary["name"] if default_primary else ""
@@ -97,8 +102,7 @@ async def upload_file(file: UploadFile):
 
     record = FileRecord(
         original_filename=file.filename or f"upload{ext}",
-        stored_path=stored_path,
-        cache_path=cache_path,
+        parsed_json=storage.dump_parsed(sheets),
         size=len(data),
         content_type=file.content_type or "application/octet-stream",
         sheet_count=len(sheets),
@@ -184,14 +188,9 @@ def get_file(file_id: int):
 
 @router.delete("/files/{file_id}")
 def delete_file(file_id: int):
-    """Delete a feed (record + stored file + cache). If it was the active feed,
-    reassign to the most recent remaining feed (or none)."""
-    record = _get_record(file_id)
-    for path in (record.stored_path, record.cache_path):
-        try:
-            Path(path).unlink(missing_ok=True)
-        except OSError:
-            pass
+    """Delete a feed. If it was the active feed, reassign to the most recent
+    remaining feed (or none)."""
+    _get_record(file_id)  # 404 if missing
     with get_session() as session:
         rec = session.get(FileRecord, file_id)
         if rec is not None:
@@ -214,7 +213,7 @@ def delete_file(file_id: int):
 def set_primary_sheet(file_id: int, payload: PrimarySheetUpdate):
     """Designate which sheet is the file's primary (data) sheet."""
     record = _get_record(file_id)
-    parsed = storage.load_parsed(record.cache_path)
+    parsed = storage.load_parsed(record.id, record.parsed_json)
     sheet = next(
         (s for s in parsed["sheets"] if s["name"] == payload.primary_sheet), None
     )
@@ -230,16 +229,6 @@ def set_primary_sheet(file_id: int, payload: PrimarySheetUpdate):
         session.commit()
         session.refresh(record)
     return _record_to_meta(record)
-
-
-@router.get("/files/{file_id}/raw")
-def get_raw(file_id: int):
-    record = _get_record(file_id)
-    data = storage.read_raw(record.stored_path)
-    # RFC 5987: encode non-latin1 filenames so the header is HTTP-safe.
-    encoded = quote(record.original_filename)
-    headers = {"Content-Disposition": f"inline; filename*=UTF-8''{encoded}"}
-    return Response(content=data, media_type=record.content_type, headers=headers)
 
 
 def _cell_text(value) -> str:
@@ -348,11 +337,7 @@ def _xlsx_response(columns: list[str], rows: list[list], filename: str) -> Respo
 
 
 def _primary_sheet(record: FileRecord) -> dict:
-    try:
-        parsed = storage.load_parsed(record.cache_path)
-    except FileNotFoundError:
-        ext = Path(record.stored_path).suffix.lower()
-        parsed = {"sheets": parsing.parse_file(record.stored_path, ext)}
+    parsed = storage.load_parsed(record.id, record.parsed_json)
     sheets = parsed["sheets"]
     sheet = next(
         (s for s in sheets if s["name"] == record.primary_sheet),
