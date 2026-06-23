@@ -114,25 +114,35 @@ export function ScanReconcilePage() {
 
       {result && (
         <div className="space-y-6">
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#e6f6ee] px-3 py-1 text-sm font-medium text-[#127a48]">
-              {result.correct_matches.toLocaleString()} correct
-            </span>
-            {CATEGORIES.map(({ key, label }) => {
-              const n = (result[key] as ScanRow[]).length
-              return (
-                <span
-                  key={key}
-                  className={`rounded-full px-3 py-1 text-sm font-medium ${
-                    n > 0
-                      ? 'bg-[var(--warning)] text-[var(--warning-foreground)]'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {label}: {n}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-[#e6f6ee] px-3 py-1 text-sm font-medium text-[#127a48]">
+                {result.correct_matches.toLocaleString()} correct
+              </span>
+              {CATEGORIES.map(({ key, label }) => {
+                const n = (result[key] as ScanRow[]).length
+                return (
+                  <span
+                    key={key}
+                    className={`rounded-full px-3 py-1 text-sm font-medium ${
+                      n > 0
+                        ? 'bg-[var(--warning)] text-[var(--warning-foreground)]'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {label}: {n}
+                  </span>
+                )
+              })}
+            </div>
+            {activeId !== null && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Export all (current feed):
                 </span>
-              )
-            })}
+                <ExportMenu urlFor={(fmt) => api.exportUrl(activeId, { fmt })} />
+              </div>
+            )}
           </div>
 
           {result.fileSummary.length > 1 && (
@@ -153,17 +163,10 @@ export function ScanReconcilePage() {
             if (catRows.length === 0) return null
             return (
               <section key={key} className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-title text-sm font-semibold text-foreground">
-                    {label}{' '}
-                    <span className="text-muted-foreground">({catRows.length})</span>
-                  </h2>
-                  {key === 'wrong_location' && activeId !== null && (
-                    <ExportMenu
-                      urlFor={(fmt) => api.exportUrl(activeId, { fmt })}
-                    />
-                  )}
-                </div>
+                <h2 className="font-title text-sm font-semibold text-foreground">
+                  {label}{' '}
+                  <span className="text-muted-foreground">({catRows.length})</span>
+                </h2>
                 {key === 'wrong_location' ? (
                   <WrongLocationTable rows={catRows} />
                 ) : (

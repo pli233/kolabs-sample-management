@@ -316,7 +316,7 @@ export const api = {
     recordId: Cell,
     box: Cell,
     samplePos: string
-  ): Promise<{ record_id: string; box: Cell; sample_pos: Cell }> {
+  ): Promise<{ applied: number }> {
     return handle(
       await fetch(`${API_BASE}/api/reconcile/apply-position`, {
         method: 'POST',
@@ -325,6 +325,25 @@ export const api = {
           record_id: recordId,
           box,
           sample_pos: samplePos,
+        }),
+      })
+    )
+  },
+
+  /** Batch reconcile fix: apply many records' box/sample_pos in one DB write. */
+  async applyPositions(
+    items: { recordId: Cell; box: Cell; samplePos: string }[]
+  ): Promise<{ applied: number }> {
+    return handle(
+      await fetch(`${API_BASE}/api/reconcile/apply-positions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map((i) => ({
+            record_id: i.recordId,
+            box: i.box,
+            sample_pos: i.samplePos,
+          })),
         }),
       })
     )
