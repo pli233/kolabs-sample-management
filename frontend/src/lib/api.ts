@@ -298,6 +298,26 @@ export const api = {
     URL.revokeObjectURL(url)
   },
 
+  /** Reconcile fix: write a record's box/position in the active feed to the
+   *  scanned location (persists to the database). */
+  async applyPosition(
+    recordId: Cell,
+    box: Cell,
+    samplePos: string
+  ): Promise<{ record_id: string; box: Cell; sample_pos: Cell }> {
+    return handle(
+      await fetch(`${API_BASE}/api/reconcile/apply-position`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          record_id: recordId,
+          box,
+          sample_pos: samplePos,
+        }),
+      })
+    )
+  },
+
   async deleteFeed(id: number): Promise<{ deleted: number; active: number | null }> {
     return handle<{ deleted: number; active: number | null }>(
       await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' })

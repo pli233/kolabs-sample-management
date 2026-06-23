@@ -84,6 +84,57 @@ def export_table(body: ExportTableBody):
     return _table_response(body.columns, body.rows, body.filename or "export", fmt)
 
 
+class ApplyPositionBody(BaseModel):
+    record_id: int | str
+    box: int | str | None = None
+    sample_pos: str | None = None
+
+
+@router.post("/reconcile/apply-position")
+def apply_position(body: ApplyPositionBody):
+    """Reconcile fix: set a record's box/sample_pos in the active feed to the
+    scanned location, persisting the change to the database."""
+    record = _active_record()
+    parsed = storage.load_parsed(record.id, record.parsed_json)
+    sheets = parsed["sheets"]
+    sheet = next(
+        (s for s in sheets if s["name"] == record.primary_sheet),
+        sheets[0] if sheets else None,
+    )
+    if sheet is None:
+        raise HTTPException(status_code=422, detail="Feed has no sheet to edit")
+
+    idx = {c: i for i, c in enumerate(sheet["columns"])}
+    ri, bi, pi = idx.get("record_id"), idx.get("box"), idx.get("sample_pos")
+    if ri is None:
+        raise HTTPException(status_code=400, detail="Feed has no record_id column")
+
+    target = next(
+        (r for r in sheet["rows"] if str(r[ri]) == str(body.record_id)), None
+    )
+    if target is None:
+        raise HTTPException(status_code=404, detail="record_id not found in feed")
+
+    if body.box is not None and bi is not None:
+        target[bi] = body.box
+    if body.sample_pos is not None and pi is not None:
+        target[pi] = body.sample_pos
+
+    new_json = storage.dump_parsed(sheets)
+    with get_session() as session:
+        rec = session.get(FileRecord, record.id)
+        rec.parsed_json = new_json
+        session.add(rec)
+        session.commit()
+    storage.clear_cache()
+
+    return {
+        "record_id": str(body.record_id),
+        "box": target[bi] if bi is not None else None,
+        "sample_pos": target[pi] if pi is not None else None,
+    }
+
+
 @router.post("/files")
 async def upload_file(file: UploadFile):
     ext = Path(file.filename or "").suffix.lower()

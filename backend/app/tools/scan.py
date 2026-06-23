@@ -221,7 +221,8 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
             exp = db_locs[0]
             out["wrong_location"].append(
                 {**rec, "expected_project": exp["project"],
-                 "expected_box": exp["box"], "expected_position": exp["position"]}
+                 "expected_box": exp["box"], "expected_position": exp["position"],
+                 "record_id": exp["record_id"]}
             )
         # position conflict: DB assigns this slot to a different code
         owners = db_by_pos.get((s_proj, s_boxn, s_pos), [])
