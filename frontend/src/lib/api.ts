@@ -164,6 +164,7 @@ export interface ScanResult {
 export interface AliquotParams {
   ids: string
   preferredFreezer?: string
+  preferredProject?: string
   backups: number
 }
 
@@ -171,6 +172,9 @@ function aliquotQuery(p: AliquotParams): URLSearchParams {
   const params = new URLSearchParams({ ids: p.ids, backups: String(p.backups) })
   if (p.preferredFreezer && p.preferredFreezer.trim()) {
     params.set('preferred_freezer', p.preferredFreezer.trim())
+  }
+  if (p.preferredProject && p.preferredProject.trim()) {
+    params.set('preferred_project', p.preferredProject.trim())
   }
   return params
 }
