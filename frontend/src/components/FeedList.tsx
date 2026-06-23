@@ -1,6 +1,6 @@
 import { CheckCircle2, FileSpreadsheet, Trash2 } from 'lucide-react'
 import type { FileMeta } from '@/lib/api'
-import { formatBytes } from '@/lib/utils'
+import { feedName, formatBytes, relativeTime } from '@/lib/utils'
 import { fileStatusBadge } from '@/lib/match'
 import { Button } from '@/components/ui/button'
 
@@ -27,13 +27,15 @@ export function FeedList({ files, activeId, onSetActive, onDelete }: FeedListPro
           >
             <FileSpreadsheet className="h-5 w-5 shrink-0 text-primary" />
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium text-foreground">
-                {f.original_filename}
+              <div
+                className="truncate font-medium text-foreground"
+                title={f.original_filename}
+              >
+                {feedName(f.original_filename)}
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                {f.sheet_count} sheet{f.sheet_count === 1 ? '' : 's'}
-                {f.primary_sheet && <> · primary “{f.primary_sheet}”</>} ·{' '}
-                {formatBytes(f.size)} · {new Date(f.uploaded_at).toLocaleString()}
+                {f.sheet_count} sheet{f.sheet_count === 1 ? '' : 's'} ·{' '}
+                {formatBytes(f.size)} · uploaded {relativeTime(f.uploaded_at)}
               </div>
             </div>
             <span

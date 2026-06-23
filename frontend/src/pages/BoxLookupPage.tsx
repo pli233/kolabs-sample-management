@@ -42,9 +42,7 @@ export function BoxLookupPage() {
           Box Lookup
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Enter a box number to list every location it appears in (across
-          projects and freezers), with a tube count and example tubes. Runs
-          against the active data feed.
+          Find every location a box number appears in, with tube counts.
         </p>
       </div>
 
@@ -91,16 +89,22 @@ export function BoxLookupPage() {
               key={i}
               className="overflow-hidden rounded-lg border border-border bg-card"
             >
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-muted px-4 py-2.5 text-sm">
-                {result.locationColumns.map((c) => (
-                  <span key={c}>
-                    <span className="text-muted-foreground">{c}:</span>{' '}
-                    <span className="font-medium text-foreground">
-                      {show(loc.location[c])}
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border bg-muted px-4 py-2.5 text-sm">
+                {result.locationColumns
+                  .filter((c) => {
+                    const v = loc.location[c]
+                    return v !== null && v !== undefined && v !== ''
+                  })
+                  .map((c, k) => (
+                    <span key={c} className="flex items-center gap-1.5">
+                      {k > 0 && <span className="text-muted-foreground/50">›</span>}
+                      <span className="text-xs text-muted-foreground">{c}</span>
+                      <span className="font-medium text-foreground">
+                        {show(loc.location[c])}
+                      </span>
                     </span>
-                  </span>
-                ))}
-                <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  ))}
+                <span className="ml-auto shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-primary">
                   {loc.count} tube{loc.count === 1 ? '' : 's'}
                 </span>
               </div>

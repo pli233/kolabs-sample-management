@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Upload } from 'lucide-react'
+import { Download, UploadCloud } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
@@ -69,16 +69,30 @@ export function ScanReconcilePage() {
           Scan Reconcile
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload physical-rack scan files (.csv / .xlsx / .xls) and reconcile them
-          against the active feed — wrong codes, wrong locations, missing tubes, and
-          position conflicts. Duplicate scan files are detected and dropped.
+          Reconcile physical-rack scans against the active feed — wrong codes,
+          locations, missing tubes, conflicts.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-muted">
-          <Upload className="h-4 w-4 text-primary" />
-          Choose scan files
+      <div className="space-y-3">
+        <label
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 px-6 py-10 text-center transition-colors hover:border-primary/60 hover:bg-muted"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault()
+            const dropped = Array.from(e.dataTransfer.files)
+            if (dropped.length) setFiles(dropped)
+          }}
+        >
+          <UploadCloud className="h-9 w-9 text-primary" />
+          <span className="font-title text-base font-semibold text-foreground">
+            {files.length > 0
+              ? `${files.length} file${files.length === 1 ? '' : 's'} ready`
+              : 'Drag scan files here, or click to choose'}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            .csv / .xlsx / .xls · multiple files
+          </span>
           <input
             type="file"
             multiple
@@ -88,22 +102,16 @@ export function ScanReconcilePage() {
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
         </label>
-        {files.length > 0 && (
-          <span className="text-sm text-muted-foreground">
-            {files.length} file{files.length === 1 ? '' : 's'} selected
-          </span>
-        )}
-        <Button onClick={run} disabled={loading || files.length === 0}>
-          {loading ? 'Reconciling…' : 'Reconcile'}
-        </Button>
-        {result && (
-          <Button
-            variant="outline"
-            onClick={() => api.scanReconcileDownload(files)}
-          >
-            <Download className="h-4 w-4" /> Export
+        <div className="flex items-center gap-3">
+          <Button onClick={run} disabled={loading || files.length === 0}>
+            {loading ? 'Reconciling…' : 'Reconcile'}
           </Button>
-        )}
+          {result && (
+            <Button variant="outline" onClick={() => api.scanReconcileDownload(files)}>
+              <Download className="h-4 w-4" /> Export report
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (

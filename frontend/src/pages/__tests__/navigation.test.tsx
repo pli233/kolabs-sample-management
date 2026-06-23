@@ -23,6 +23,7 @@ function renderAt(path: string, element: React.ReactNode) {
 
 describe('SidebarLayout', () => {
   it('renders Dashboard and Data Feeds nav links', () => {
+    getActiveFeed.mockResolvedValue({ active: null }) // sidebar footer fetch
     renderAt('/dashboard', <div />)
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Data Feeds' })).toBeInTheDocument()

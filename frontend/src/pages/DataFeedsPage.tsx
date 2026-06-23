@@ -115,8 +115,7 @@ export function DataFeedsPage() {
             Data Feeds
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Upload an Excel/CSV file to use as the system's data source. The newest
-            upload becomes the active feed; the Dashboard runs against it.
+            Upload an Excel/CSV source. The newest upload becomes the active feed.
           </p>
         </div>
         <Dropzone onFile={handleFile} disabled={uploading} progress={progress} />

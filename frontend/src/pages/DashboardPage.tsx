@@ -6,6 +6,7 @@ import { DataTableView } from '@/components/DataTableView'
 import { OverviewCharts } from '@/components/OverviewCharts'
 import { Button } from '@/components/ui/button'
 import { fileStatusBadge } from '@/lib/match'
+import { feedName } from '@/lib/utils'
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -67,9 +68,15 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-3" data-tour="feed-title">
-          <h1 className="truncate font-title text-xl font-semibold text-foreground">
-            {active.original_filename}
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Active feed
+        </p>
+        <div className="mt-1 flex items-center gap-3" data-tour="feed-title">
+          <h1
+            className="truncate font-title text-xl font-semibold text-foreground"
+            title={active.original_filename}
+          >
+            {feedName(active.original_filename)}
           </h1>
           <span
             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
@@ -78,8 +85,8 @@ export function DashboardPage() {
           </span>
         </div>
         {active.primary_sheet && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Active feed · sheet “{active.primary_sheet}”
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            sheet “{active.primary_sheet}”
           </p>
         )}
       </div>

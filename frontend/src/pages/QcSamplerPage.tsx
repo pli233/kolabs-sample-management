@@ -47,8 +47,8 @@ export function QcSamplerPage() {
           QC Sampler
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Randomly pick N tubes per box for QC. Reproducible by seed; supports box
-          ranges like <code>716-719,722</code>. Runs against the active feed.
+          Seeded random QC sample, N tubes per box — box ranges like{' '}
+          <code>716-719,722</code>.
         </p>
       </div>
 
@@ -107,15 +107,22 @@ export function QcSamplerPage() {
 
       {result && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span>
-              Seed <span className="font-medium text-foreground">{result.seed}</span>{' '}
-              (reproducible)
-            </span>
-            <span>·</span>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>
               {result.rows.length} tube{result.rows.length === 1 ? '' : 's'} sampled
             </span>
+            <span className="text-muted-foreground/50">·</span>
+            <span>reproducible with seed</span>
+            <button
+              type="button"
+              onClick={() =>
+                void navigator.clipboard?.writeText(String(result.seed))
+              }
+              title="Copy seed"
+              className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground hover:border-primary hover:text-primary"
+            >
+              {result.seed}
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-1.5">

@@ -49,9 +49,8 @@ export function AliquotFinderPage() {
           Aliquot Finder
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          For each person/project_id, recommend a PRIMARY tube from the
-          easiest-to-reach freezer plus BACKUP tubes. IDs without a decimal match
-          all aliquots of that person. Runs against the active feed.
+          A PRIMARY tube plus BACKUP tubes per ID. An ID without a decimal matches
+          all of that person’s aliquots.
         </p>
       </div>
 
@@ -115,7 +114,7 @@ export function AliquotFinderPage() {
           exportName="aliquot_finder"
           rowTint={(row) => {
             const ci = result.columns.indexOf('choice')
-            return ci >= 0 && row[ci] === 'PRIMARY' ? '#e0f2fe' : undefined
+            return ci >= 0 && row[ci] === 'PRIMARY' ? '#bae6fd' : undefined
           }}
         />
       )}
