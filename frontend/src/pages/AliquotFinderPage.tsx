@@ -11,6 +11,10 @@ export function AliquotFinderPage() {
     'aliquot.freezer',
     ''
   )
+  const [preferredProject, setPreferredProject] = usePersistentState(
+    'aliquot.project',
+    ''
+  )
   const [backups, setBackups] = usePersistentState('aliquot.backups', 3)
   const [result, setResult] = usePersistentState<ToolTable | null>(
     'aliquot.result',
@@ -20,7 +24,7 @@ export function AliquotFinderPage() {
   const [error, setError] = useState<string | null>(null)
 
   function params(): AliquotParams {
-    return { ids: ids.trim(), preferredFreezer, backups }
+    return { ids: ids.trim(), preferredFreezer, preferredProject, backups }
   }
 
   async function run(e: React.FormEvent) {
@@ -68,6 +72,16 @@ export function AliquotFinderPage() {
               onChange={(e) => setPreferredFreezer(e.target.value)}
               placeholder="any"
               aria-label="Preferred freezer"
+              className="w-32"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Preferred project (optional)
+            <Input
+              value={preferredProject}
+              onChange={(e) => setPreferredProject(e.target.value)}
+              placeholder="any"
+              aria-label="Preferred project"
               className="w-32"
             />
           </label>

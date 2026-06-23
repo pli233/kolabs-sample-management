@@ -46,7 +46,11 @@ def _matches(rows: list[list], proj_i: int, idx: dict, person_id: str) -> list[l
 
 
 def find_aliquots(
-    sheet: dict, ids: list[str], preferred_freezer: str | None, backups: int
+    sheet: dict,
+    ids: list[str],
+    preferred_freezer: str | None,
+    backups: int,
+    preferred_project: str | None = None,
 ) -> dict:
     columns: list[str] = sheet["columns"]
     rows: list[list] = sheet["rows"]
@@ -54,6 +58,7 @@ def find_aliquots(
     proj_i = idx.get("project_id")
     fr_i = idx.get("freezer")
     pref = (preferred_freezer or "").strip()
+    pref_proj = (preferred_project or "").strip()
 
     def cell(row, col):
         return row[idx[col]] if col in idx else None
@@ -74,24 +79,43 @@ def find_aliquots(
         counts = {f: len(v) for f, v in by_freezer.items()}
         total = len(matched)
 
-        note = ""
-        if pref and pref in by_freezer:
-            chosen = pref
-        else:
-            chosen = max(counts, key=lambda f: counts[f])
-            if pref:
-                note = f"Preferred freezer {pref} had no samples; used {chosen}"
+        # Freezer preference: honour it if present, else the most-populated.
+        note_parts: list[str] = []
+        chosen = max(counts, key=lambda f: counts[f])
+        if pref:
+            if pref in by_freezer:
+                chosen = pref
+            else:
+                note_parts.append(
+                    f"Preferred freezer {pref} had no samples; used {chosen}"
+                )
+        if pref_proj and pref_proj not in {
+            str(cell(r, "project") or "").strip() for r in matched
+        }:
+            note_parts.append(f"Preferred project {pref_proj} had no samples")
 
-        ordered = by_freezer[chosen] + [
-            r for f in by_freezer if f != chosen for r in by_freezer[f]
-        ]
+        # Order candidates: preferred project first, then the chosen freezer,
+        # then by freezer abundance (stable tiebreak for reproducibility).
+        def sort_key(r):
+            proj = str(cell(r, "project") or "").strip()
+            frz = str(r[fr_i]).strip() if fr_i is not None else ""
+            return (
+                0 if pref_proj and proj == pref_proj else 1,
+                0 if frz == chosen else 1,
+                -counts.get(frz, 0),
+                frz,
+            )
+
+        ordered = sorted(matched, key=sort_key)
+        primary_frz = str(ordered[0][fr_i]).strip() if fr_i is not None else ""
+        note = "; ".join(note_parts)
         matched_pid = str(matched[0][proj_i]).strip()
         for rank, r in enumerate(ordered[: 1 + max(0, backups)], start=1):
             out.append(
                 [
                     person, matched_pid,
                     "PRIMARY" if rank == 1 else "BACKUP", rank,
-                    chosen, counts[chosen], total,
+                    primary_frz, counts.get(primary_frz, 0), total,
                     cell(r, "project"), cell(r, "freezer"), cell(r, "rack"),
                     cell(r, "drawer"), cell(r, "box_pos"), cell(r, "box"),
                     cell(r, "sample_pos"), cell(r, "aliquot"), cell(r, "cryobank"),

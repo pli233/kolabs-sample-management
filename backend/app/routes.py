@@ -574,22 +574,41 @@ def qc_sample_route(
     return result
 
 
+def _drop_empty_columns(
+    columns: list[str], rows: list[list]
+) -> tuple[list[str], list[list]]:
+    """Drop columns that are blank in every row (an all-empty column is noise)."""
+    if not rows:
+        return columns, rows
+    keep = [
+        i
+        for i in range(len(columns))
+        if any(r[i] is not None and str(r[i]).strip() != "" for r in rows)
+    ]
+    return [columns[i] for i in keep], [[r[i] for i in keep] for r in rows]
+
+
 @router.get("/aliquot-finder")
 def aliquot_finder_route(
     ids: str = Query(..., min_length=1),
     preferred_freezer: str | None = Query(None),
+    preferred_project: str | None = Query(None),
     backups: int = Query(3, ge=0),
     format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
-    """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person."""
+    """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person.
+    Prefer a freezer and/or a project; all-empty columns are dropped."""
     id_list = aliquot.parse_ids(ids)
     if not id_list:
         raise HTTPException(status_code=400, detail="No ids provided")
     sheet = _primary_sheet(_active_record())
-    result = aliquot.find_aliquots(sheet, id_list, preferred_freezer, backups)
+    result = aliquot.find_aliquots(
+        sheet, id_list, preferred_freezer, backups, preferred_project
+    )
+    columns, rows = _drop_empty_columns(result["columns"], result["rows"])
     if format in ("xlsx", "csv"):
-        return _table_response(result["columns"], result["rows"], "aliquot_finder", format)
-    return result
+        return _table_response(columns, rows, "aliquot_finder", format)
+    return {"columns": columns, "rows": rows}
 
 
 _SCAN_CATEGORIES = [
