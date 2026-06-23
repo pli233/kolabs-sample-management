@@ -1,0 +1,11 @@
+# Render Blueprint — free Docker web service.
+# Deploy: push to GitHub, then render.com → New → Blueprint → pick this repo.
+# Note: free plan has an ephemeral disk and sleeps when idle, so the SQLite DB
+# and uploaded feeds reset on restart/redeploy (re-upload after a cold start).
+services:
+  - type: web
+    name: kolabs-sample-management
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
