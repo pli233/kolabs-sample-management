@@ -3,7 +3,7 @@ import { Download, Upload } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
-import { DataTable } from '@/components/DataTable'
+import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
 import { WrongLocationTable } from '@/components/WrongLocationTable'
 
@@ -140,10 +140,9 @@ export function ScanReconcilePage() {
               <h2 className="font-title text-sm font-semibold text-foreground">
                 Scan files
               </h2>
-              <DataTable
+              <GlideTable
                 {...toTable(result.fileSummary)}
                 searchable={false}
-                maxHeight="40vh"
                 exportName="scan_files"
               />
             </section>
@@ -168,7 +167,7 @@ export function ScanReconcilePage() {
                 {key === 'wrong_location' ? (
                   <WrongLocationTable rows={catRows} />
                 ) : (
-                  <DataTable {...toTable(catRows)} maxHeight="48vh" exportName={key} />
+                  <GlideTable {...toTable(catRows)} exportName={key} />
                 )}
               </section>
             )
