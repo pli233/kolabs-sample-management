@@ -69,6 +69,21 @@ class PrimarySheetUpdate(BaseModel):
     primary_sheet: str
 
 
+class ExportTableBody(BaseModel):
+    columns: list[str]
+    rows: list[list]
+    filename: str = "export"
+    fmt: str = "xlsx"
+
+
+@router.post("/export-table")
+def export_table(body: ExportTableBody):
+    """Download an arbitrary client-side table (e.g. a Scan Reconcile category)
+    as .xlsx or .csv."""
+    fmt = body.fmt if body.fmt in ("xlsx", "csv") else "xlsx"
+    return _table_response(body.columns, body.rows, body.filename or "export", fmt)
+
+
 @router.post("/files")
 async def upload_file(file: UploadFile):
     ext = Path(file.filename or "").suffix.lower()

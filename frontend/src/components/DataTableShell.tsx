@@ -1,4 +1,4 @@
-import { useState, type RefObject } from 'react'
+import { useState, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
 import type { Column, Header, Table } from '@tanstack/react-table'
 import type { VirtualItem } from '@tanstack/react-virtual'
 import { ArrowDown, ArrowUp, ChevronsUpDown, Columns3 } from 'lucide-react'
@@ -91,6 +91,16 @@ export function ColumnMenu({
   )
 }
 
+/** Click a cell to copy its value and select it (visual feedback). */
+function copyCell(e: ReactMouseEvent<HTMLDivElement>, text: string) {
+  const range = document.createRange()
+  range.selectNodeContents(e.currentTarget)
+  const sel = window.getSelection()
+  sel?.removeAllRanges()
+  sel?.addRange(range)
+  void navigator.clipboard?.writeText(text).catch(() => {})
+}
+
 interface VirtualTableProps {
   table: Table<Cell[]>
   parentRef: RefObject<HTMLDivElement | null>
@@ -104,6 +114,8 @@ interface VirtualTableProps {
   onToggleSort: (colId: string) => void
   isEmpty: boolean
   emptyText: string
+  /** Optional per-row tint, e.g. highlight PRIMARY rows. */
+  rowClassName?: (row: Cell[], index: number) => string
   /** Hug the columns and center (dashboard) vs fill available width (tools). */
   fit?: boolean
   maxHeight?: string
@@ -125,6 +137,7 @@ export function VirtualTable({
   onToggleSort,
   isEmpty,
   emptyText,
+  rowClassName,
   fit = false,
   maxHeight = '64vh',
 }: VirtualTableProps) {
@@ -193,7 +206,8 @@ export function VirtualTable({
                 key={vr.key}
                 className={cn(
                   'flex border-b border-border/60 hover:bg-muted/50',
-                  vr.index % 2 === 1 && 'bg-muted/20'
+                  vr.index % 2 === 1 && 'bg-muted/20',
+                  row && rowClassName?.(row, vr.index)
                 )}
                 style={{
                   position: 'absolute',
@@ -210,9 +224,10 @@ export function VirtualTable({
                     return (
                       <div
                         key={col.id}
-                        className="shrink-0 truncate px-3 py-2 text-sm text-foreground"
+                        className="shrink-0 cursor-pointer select-text truncate px-3 py-2 text-sm text-foreground"
                         style={{ width: col.getSize() }}
-                        title={text}
+                        title={text ? `${text} — click to copy` : undefined}
+                        onClick={(e) => copyCell(e, text)}
                       >
                         {text}
                       </div>

@@ -1,14 +1,21 @@
 import { useState } from 'react'
 import { api, type AliquotParams, type ToolTable } from '@/lib/api'
+import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/DataTable'
 
 export function AliquotFinderPage() {
-  const [ids, setIds] = useState('')
-  const [preferredFreezer, setPreferredFreezer] = useState('')
-  const [backups, setBackups] = useState(3)
-  const [result, setResult] = useState<ToolTable | null>(null)
+  const [ids, setIds] = usePersistentState('aliquot.ids', '')
+  const [preferredFreezer, setPreferredFreezer] = usePersistentState(
+    'aliquot.freezer',
+    ''
+  )
+  const [backups, setBackups] = usePersistentState('aliquot.backups', 3)
+  const [result, setResult] = usePersistentState<ToolTable | null>(
+    'aliquot.result',
+    null
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -91,7 +98,11 @@ export function AliquotFinderPage() {
         <DataTable
           columns={result.columns}
           rows={result.rows}
-          exportUrlFor={(fmt) => api.aliquotExportUrl(params(), fmt)}
+          exportName="aliquot_finder"
+          rowClassName={(row) => {
+            const ci = result.columns.indexOf('choice')
+            return ci >= 0 && row[ci] === 'PRIMARY' ? 'bg-primary/10' : 'bg-white'
+          }}
         />
       )}
     </div>

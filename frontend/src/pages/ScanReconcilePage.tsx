@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
+import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/DataTable'
 
@@ -24,8 +25,11 @@ function toTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
 }
 
 export function ScanReconcilePage() {
-  const [files, setFiles] = useState<File[]>([])
-  const [result, setResult] = useState<ScanResult | null>(null)
+  const [files, setFiles] = usePersistentState<File[]>('scan.files', [])
+  const [result, setResult] = usePersistentState<ScanResult | null>(
+    'scan.result',
+    null
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -121,7 +125,12 @@ export function ScanReconcilePage() {
               <h2 className="font-title text-sm font-semibold text-foreground">
                 Scan files
               </h2>
-              <DataTable {...toTable(result.fileSummary)} searchable={false} maxHeight="40vh" />
+              <DataTable
+                {...toTable(result.fileSummary)}
+                searchable={false}
+                maxHeight="40vh"
+                exportName="scan_files"
+              />
             </section>
           )}
 
@@ -134,7 +143,7 @@ export function ScanReconcilePage() {
                   {label}{' '}
                   <span className="text-muted-foreground">({catRows.length})</span>
                 </h2>
-                <DataTable {...toTable(catRows)} maxHeight="48vh" />
+                <DataTable {...toTable(catRows)} maxHeight="48vh" exportName={key} />
               </section>
             )
           })}

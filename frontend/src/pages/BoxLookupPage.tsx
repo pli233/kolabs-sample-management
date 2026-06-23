@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { api, type BoxLookupResult, type Cell } from '@/lib/api'
+import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { ExportMenu } from '@/components/ExportMenu'
 
@@ -10,8 +11,11 @@ function show(v: Cell): string {
 }
 
 export function BoxLookupPage() {
-  const [box, setBox] = useState('')
-  const [result, setResult] = useState<BoxLookupResult | null>(null)
+  const [box, setBox] = usePersistentState('box.query', '')
+  const [result, setResult] = usePersistentState<BoxLookupResult | null>(
+    'box.result',
+    null
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

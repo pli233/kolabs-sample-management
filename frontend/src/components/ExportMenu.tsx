@@ -2,18 +2,24 @@ import { useState } from 'react'
 import { ChevronDown, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-/** Export button with an .xlsx / .csv format menu. `urlFor` returns the
- *  download URL for a given format (the server sends it as an attachment). */
+const ITEMS: { fmt: 'xlsx' | 'csv'; label: string }[] = [
+  { fmt: 'xlsx', label: 'Excel (.xlsx)' },
+  { fmt: 'csv', label: 'CSV (.csv)' },
+]
+
+/** Export button with an .xlsx / .csv format menu. Provide `urlFor` (download
+ *  link, e.g. server-side filtered export) or `onSelect` (e.g. POST a
+ *  client-side table). */
 export function ExportMenu({
   urlFor,
+  onSelect,
 }: {
-  urlFor: (fmt: 'xlsx' | 'csv') => string
+  urlFor?: (fmt: 'xlsx' | 'csv') => string
+  onSelect?: (fmt: 'xlsx' | 'csv') => void
 }) {
   const [open, setOpen] = useState(false)
-  const items: { fmt: 'xlsx' | 'csv'; label: string }[] = [
-    { fmt: 'xlsx', label: 'Excel (.xlsx)' },
-    { fmt: 'csv', label: 'CSV (.csv)' },
-  ]
+  const itemClass =
+    'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted'
 
   return (
     <div className="relative">
@@ -35,17 +41,30 @@ export function ExportMenu({
             onClick={() => setOpen(false)}
           />
           <div className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-md border border-border bg-card p-1 shadow-lg">
-            {items.map(({ fmt, label }) => (
-              <a
-                key={fmt}
-                href={urlFor(fmt)}
-                download
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground hover:bg-muted"
-              >
-                {label}
-              </a>
-            ))}
+            {ITEMS.map(({ fmt, label }) =>
+              urlFor ? (
+                <a
+                  key={fmt}
+                  href={urlFor(fmt)}
+                  download
+                  onClick={() => setOpen(false)}
+                  className={itemClass}
+                >
+                  {label}
+                </a>
+              ) : (
+                <button
+                  key={fmt}
+                  onClick={() => {
+                    setOpen(false)
+                    onSelect?.(fmt)
+                  }}
+                  className={itemClass}
+                >
+                  {label}
+                </button>
+              )
+            )}
           </div>
         </>
       )}

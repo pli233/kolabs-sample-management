@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Search, X } from 'lucide-react'
-import type { Cell } from '@/lib/api'
+import { api, type Cell } from '@/lib/api'
 import { renderCell } from '@/lib/table'
 import { ColumnMenu, VirtualTable } from '@/components/DataTableShell'
 import { ExportMenu } from '@/components/ExportMenu'
@@ -21,8 +21,11 @@ interface DataTableProps {
   rows: Cell[][]
   /** Columns visible by default (others toggleable); all visible if omitted. */
   defaultVisible?: string[]
-  /** When set, shows an Export menu; returns the download URL for a format. */
-  exportUrlFor?: (fmt: 'xlsx' | 'csv') => string
+  /** When set, shows an Export menu that downloads the displayed rows as the
+   *  given base filename (xlsx/csv). */
+  exportName?: string
+  /** Optional per-row tint (e.g. highlight PRIMARY rows). */
+  rowClassName?: (row: Cell[], index: number) => string
   searchable?: boolean
   maxHeight?: string
   emptyText?: string
@@ -37,7 +40,8 @@ export function DataTable({
   columns,
   rows,
   defaultVisible,
-  exportUrlFor,
+  exportName,
+  rowClassName,
   searchable = true,
   maxHeight = '64vh',
   emptyText = 'No rows.',
@@ -136,7 +140,22 @@ export function DataTable({
             {globalFilter && `${modelRows.length.toLocaleString()} of `}
             {rows.length.toLocaleString()} rows · {visibleCols.length} cols
           </span>
-          {exportUrlFor && <ExportMenu urlFor={exportUrlFor} />}
+          {exportName && (
+            <ExportMenu
+              onSelect={(fmt) =>
+                api
+                  .exportTable(
+                    visibleCols.map((c) => c.id),
+                    modelRows.map((r) =>
+                      visibleCols.map((c) => r.original[colIndex[c.id]])
+                    ),
+                    exportName,
+                    fmt
+                  )
+                  .catch(() => {})
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -154,6 +173,7 @@ export function DataTable({
         onToggleSort={(id) => table.getColumn(id)?.toggleSorting()}
         isEmpty={modelRows.length === 0}
         emptyText={globalFilter ? `No rows match “${globalFilter}”` : emptyText}
+        rowClassName={rowClassName}
         maxHeight={maxHeight}
       />
     </div>
