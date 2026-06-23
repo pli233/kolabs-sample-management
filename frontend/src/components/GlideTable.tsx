@@ -44,6 +44,8 @@ interface GlideTableProps {
   exportName?: string
   /** Optional per-row background tint (hex), e.g. PRIMARY rows. */
   rowTint?: (row: Cell[], index: number) => string | undefined
+  /** Column to group by: pinned first, with alternating shading per group. */
+  groupBy?: string
   searchable?: boolean
   emptyText?: string
 }
@@ -58,6 +60,7 @@ export function GlideTable({
   rows,
   exportName,
   rowTint,
+  groupBy,
   searchable = true,
   emptyText = 'No rows.',
 }: GlideTableProps) {
@@ -70,14 +73,38 @@ export function GlideTable({
   const [conditions, setConditions] = useState<FilterCondition[]>([])
   const [matchMode, setMatchMode] = useState<'all' | 'any'>('all')
   const [colMenuOpen, setColMenuOpen] = useState(false)
+  // User drag-reorder; null until first move, then validated against the data.
+  const [order, setOrder] = useState<string[] | null>(null)
 
   const colIndex = useMemo(
     () => Object.fromEntries(columns.map((c, i) => [c, i])),
     [columns]
   )
+  // Default order pins the group column first; drag overrides it.
+  const baseOrder = useMemo(
+    () =>
+      groupBy && columns.includes(groupBy)
+        ? [groupBy, ...columns.filter((c) => c !== groupBy)]
+        : columns,
+    [columns, groupBy]
+  )
+  const effectiveOrder =
+    order && order.length === columns.length && order.every((c) => columns.includes(c))
+      ? order
+      : baseOrder
   const visibleCols = useMemo(
-    () => columns.filter((c) => !hidden.has(c)),
-    [columns, hidden]
+    () => effectiveOrder.filter((c) => !hidden.has(c)),
+    [effectiveOrder, hidden]
+  )
+
+  const onColumnMoved = useCallback(
+    (from: number, to: number) => {
+      const vis = effectiveOrder.filter((c) => !hidden.has(c))
+      const m = vis.splice(from, 1)[0]
+      vis.splice(to, 0, m)
+      setOrder([...vis, ...effectiveOrder.filter((c) => hidden.has(c))])
+    },
+    [effectiveOrder, hidden]
   )
 
   const view = useMemo(() => {
@@ -96,6 +123,25 @@ export function GlideTable({
     }
     return rs
   }, [rows, conditions, matchMode, search, sort, colIndex, visibleCols])
+
+  // Alternating shading per group run → visual separation between boxes.
+  const groupRows = useMemo(() => {
+    if (!groupBy || colIndex[groupBy] === undefined) return null
+    const gc = colIndex[groupBy]
+    let g = 0
+    return view.map((r, i) => {
+      if (i > 0 && r[gc] !== view[i - 1][gc]) g++
+      return g
+    })
+  }, [groupBy, colIndex, view])
+
+  const getRowThemeOverride = useCallback(
+    (row: number) =>
+      groupRows && groupRows[row] % 2 === 1
+        ? { bgCell: '#eef2f7', bgCellMedium: '#e7edf4' }
+        : undefined,
+    [groupRows]
+  )
 
   const gridColumns: GridColumn[] = useMemo(
     () =>
@@ -267,6 +313,8 @@ export function GlideTable({
             getCellContent={getCellContent}
             getCellsForSelection
             onHeaderClicked={onHeaderClicked}
+            onColumnMoved={onColumnMoved}
+            getRowThemeOverride={groupRows ? getRowThemeOverride : undefined}
             onColumnResize={(c, w) =>
               setWidths((prev) => ({ ...prev, [c.id as string]: w }))
             }

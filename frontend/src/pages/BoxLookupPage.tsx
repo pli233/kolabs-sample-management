@@ -89,7 +89,7 @@ export function BoxLookupPage() {
               key={i}
               className="overflow-hidden rounded-lg border border-border bg-card"
             >
-              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted px-4 py-2.5">
+              <div className="flex flex-wrap items-center justify-center gap-3 border-b border-border bg-muted px-4 py-2.5">
                 {result.locationColumns
                   .filter((c) => {
                     const v = loc.location[c]
@@ -108,7 +108,7 @@ export function BoxLookupPage() {
                       </span>
                     </span>
                   ))}
-                <span className="ml-auto shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-primary">
+                <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-primary">
                   {loc.count} tube{loc.count === 1 ? '' : 's'}
                 </span>
               </div>

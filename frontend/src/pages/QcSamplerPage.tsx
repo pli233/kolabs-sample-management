@@ -139,6 +139,7 @@ export function QcSamplerPage() {
           <GlideTable
             columns={result.columns}
             rows={result.rows}
+            groupBy="box"
             exportName={`qc_${project.trim() || 'sample'}_seed${result.seed}`}
           />
         </div>

@@ -115,11 +115,26 @@ function StatusFooter() {
   )
 }
 
+const guideSeenKey = (path: string) => `guide.seen:${path}`
+
 export function SidebarLayout() {
   const { pathname } = useLocation()
   const [tourOpen, setTourOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const steps = tourFor(pathname)
+
+  // Auto-open the guide the first time a page with one is visited.
+  useEffect(() => {
+    if (tourFor(pathname).length && !localStorage.getItem(guideSeenKey(pathname))) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacting to navigation
+      setTourOpen(true)
+    }
+  }, [pathname])
+
+  const closeGuide = () => {
+    setTourOpen(false)
+    localStorage.setItem(guideSeenKey(pathname), '1')
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,20 +206,20 @@ export function SidebarLayout() {
         </div>
       </main>
 
-      {/* Floating tour launcher (right edge) */}
+      {/* Floating guide launcher (right edge) */}
       {steps.length > 0 && (
         <button
           onClick={() => setTourOpen(true)}
-          aria-label="Play feature tour"
+          aria-label="Open guide"
           className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
         >
           <PlayCircle className="h-5 w-5 text-primary" />
-          Tour
+          Guide
         </button>
       )}
 
       {tourOpen && steps.length > 0 && (
-        <Tour steps={steps} onClose={() => setTourOpen(false)} />
+        <Tour steps={steps} onClose={closeGuide} />
       )}
     </div>
   )
