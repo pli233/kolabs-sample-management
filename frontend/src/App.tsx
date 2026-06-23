@@ -115,26 +115,11 @@ function StatusFooter() {
   )
 }
 
-const guideSeenKey = (path: string) => `guide.seen:${path}`
-
 export function SidebarLayout() {
   const { pathname } = useLocation()
   const [tourOpen, setTourOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const steps = tourFor(pathname)
-
-  // Auto-open the guide the first time a page with one is visited.
-  useEffect(() => {
-    if (tourFor(pathname).length && !localStorage.getItem(guideSeenKey(pathname))) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacting to navigation
-      setTourOpen(true)
-    }
-  }, [pathname])
-
-  const closeGuide = () => {
-    setTourOpen(false)
-    localStorage.setItem(guideSeenKey(pathname), '1')
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,7 +204,7 @@ export function SidebarLayout() {
       )}
 
       {tourOpen && steps.length > 0 && (
-        <Tour steps={steps} onClose={closeGuide} />
+        <Tour steps={steps} onClose={() => setTourOpen(false)} />
       )}
     </div>
   )
