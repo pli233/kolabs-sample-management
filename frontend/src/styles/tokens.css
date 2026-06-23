@@ -24,13 +24,19 @@
   --muted-foreground: var(--neutral-600);
   --border: var(--neutral-400);
   --input: var(--neutral-400);
-  --primary: var(--brand-sky);
+  /* brand-sky (#0e8ed6) is only 3.6:1 with white text — fails AA for label text.
+     Use --brand-sky directly for large/icon accents; --primary for text surfaces. */
+  --primary: #0b76b0;              /* 4.95:1 on white — AA for button/nav label text */
   --primary-foreground: #ffffff;
-  --primary-hover: #0b76b0;
+  --primary-hover: #095f8e;        /* darker still for hover */
   --accent: var(--neutral-300);
   --accent-foreground: var(--neutral-900);
   --destructive: #ea384c;
   --warning: #fff7e6;
   --warning-foreground: #92610a;
+  --warning-solid: #d97706;        /* amber for badges/dots, not just bg */
+  --success: #1f9d57;              /* WCAG AA on white */
+  --success-foreground: #ffffff;
+  --info: var(--brand-sky);
   --midnight: var(--brand-midnight);
 }

@@ -11,6 +11,7 @@ import {
 import { Boxes, FolderTree, Snowflake } from 'lucide-react'
 import type { Overview } from '@/lib/api'
 
+// Categorical brand-blue scale for bar series (intentional data palette, not semantic tokens).
 const BAR_COLORS = ['#0e8ed6', '#0b76b0', '#0112b8', '#3aa3df', '#010b24']
 
 function Stat({
@@ -58,28 +59,28 @@ function ChartCard({
         </p>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eef1f5" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-300)" vertical={false} />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#4e5561' }}
+              tick={{ fontSize: 11, fill: 'var(--neutral-600)' }}
               tickLine={false}
-              axisLine={{ stroke: '#d4dce3' }}
+              axisLine={{ stroke: 'var(--neutral-400)' }}
               interval={0}
               angle={data.length > 6 ? -35 : 0}
               textAnchor={data.length > 6 ? 'end' : 'middle'}
               height={data.length > 6 ? 48 : 24}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#4e5561' }}
+              tick={{ fontSize: 11, fill: 'var(--neutral-600)' }}
               tickLine={false}
               axisLine={false}
               width={48}
             />
             <Tooltip
-              cursor={{ fill: '#f2f4f7' }}
+              cursor={{ fill: 'var(--neutral-300)' }}
               contentStyle={{
                 borderRadius: 8,
-                border: '1px solid #d4dce3',
+                border: '1px solid var(--neutral-400)',
                 fontSize: 12,
               }}
             />

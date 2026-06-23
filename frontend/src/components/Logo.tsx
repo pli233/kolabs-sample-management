@@ -64,7 +64,13 @@ function InlineLogo() {
  * Brand lockup. Uses the official white wordmark at /kolab-logo.svg (from
  * kolaboratory.com), falling back to the inline mark if it fails to load.
  */
-export function Logo({ className }: { className?: string }) {
+export function Logo({
+  className,
+  imgClassName = 'h-7 w-auto',
+}: {
+  className?: string
+  imgClassName?: string
+}) {
   const [useImg, setUseImg] = useState(true)
   return (
     <div className={cn('flex items-center', className)}>
@@ -72,7 +78,7 @@ export function Logo({ className }: { className?: string }) {
         <img
           src="/kolab-logo.svg"
           alt="kə lab"
-          className="h-7 w-auto"
+          className={imgClassName}
           onError={() => setUseImg(false)}
         />
       ) : (

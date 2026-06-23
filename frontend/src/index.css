@@ -23,6 +23,12 @@ h3 {
   font-family: 'Poppins', 'Inter', sans-serif;
 }
 
+/* Align digits in data tables (Inter ships tabular figures).
+   Glide grid is canvas-rendered and unaffected by this. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Indeterminate progress bar (used while the server parses an upload). */
 @keyframes kolab-indeterminate {
   0% {

@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { api, type BoxLookupResult, type Cell } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ExportMenu } from '@/components/ExportMenu'
 
 function show(v: Cell): string {
@@ -48,14 +49,13 @@ export function BoxLookupPage() {
       </div>
 
       <form onSubmit={run} className="flex items-center gap-2">
-        <div className="relative w-60">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
+        <div className="w-60">
+          <Input
+            icon={<Search className="h-4 w-4" />}
             value={box}
             onChange={(e) => setBox(e.target.value)}
             placeholder="Box number, e.g. 728"
             aria-label="Box number"
-            className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
         <Button type="submit" disabled={loading || !box.trim()}>
