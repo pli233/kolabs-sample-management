@@ -11,7 +11,7 @@ import {
   TestTube2,
   X,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, feedName } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { Logo } from '@/components/Logo'
 import { Tour } from '@/components/Tour'
@@ -47,7 +47,7 @@ function StatusFooter() {
           active
             ? {
                 kind: 'feed',
-                name: active.primary_sheet || active.original_filename,
+                name: feedName(active.original_filename),
                 status: active.validation_status,
               }
             : { kind: 'none' }

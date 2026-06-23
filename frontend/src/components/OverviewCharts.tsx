@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -8,8 +9,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Boxes, FolderTree, Snowflake } from 'lucide-react'
-import type { Overview } from '@/lib/api'
+import { Boxes, ChevronDown, FolderTree, Snowflake } from 'lucide-react'
+import type { Bucket, Overview } from '@/lib/api'
 
 // Categorical brand-blue scale for bar series (intentional data palette, not semantic tokens).
 const BAR_COLORS = ['#0e8ed6', '#0b76b0', '#0112b8', '#3aa3df', '#010b24']
@@ -18,13 +19,19 @@ function Stat({
   icon: Icon,
   label,
   value,
+  details,
 }: {
   icon: typeof Boxes
   label: string
   value: string
+  /** When present, the card is clickable and lists these in a popover. */
+  details?: Bucket[]
 }) {
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
+  const [open, setOpen] = useState(false)
+  const clickable = !!details?.length
+
+  const card = (
+    <div className="flex items-center gap-4 px-5 py-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-100 text-primary">
         <Icon className="h-[22px] w-[22px]" />
       </span>
@@ -32,8 +39,49 @@ function Stat({
         <div className="font-title text-2xl font-semibold leading-none text-foreground">
           {value}
         </div>
-        <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          {label}
+          {clickable && <ChevronDown className="h-3 w-3" />}
+        </div>
       </div>
+    </div>
+  )
+
+  if (!clickable) {
+    return <div className="rounded-xl border border-border bg-card">{card}</div>
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/50"
+      >
+        {card}
+      </button>
+      {open && (
+        <>
+          <button
+            className="fixed inset-0 z-20 cursor-default"
+            aria-hidden
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-lg border border-border bg-card p-1 shadow-lg">
+            {details!.map((d) => (
+              <div
+                key={d.name}
+                className="flex items-center justify-between gap-3 rounded px-2.5 py-1.5 text-sm hover:bg-muted"
+              >
+                <span className="truncate text-foreground">{d.name}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {d.count.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -142,16 +190,18 @@ export function OverviewCharts({ overview }: { overview: Overview }) {
           icon={FolderTree}
           label="Projects"
           value={overview.projectCount.toLocaleString()}
+          details={overview.byProject}
         />
         <Stat
           icon={Snowflake}
           label="Freezers"
           value={overview.byFreezer.length.toLocaleString()}
+          details={overview.byFreezer}
         />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Tubes by freezer" data={overview.byFreezer} />
-        <ChartCard title="Top projects" data={overview.byProject} horizontal />
+        <ChartCard title="Top projects" data={overview.byProject.slice(0, 12)} horizontal />
       </div>
     </div>
   )

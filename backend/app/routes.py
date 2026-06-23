@@ -515,7 +515,7 @@ def get_overview(file_id: int):
         "total": len(rows),
         "projectCount": len(by_project),
         "byFreezer": counts("freezer"),
-        "byProject": by_project[:12],
+        "byProject": by_project,  # all projects (frontend slices for the chart)
         "byType": counts("type", 8),
     }
 
