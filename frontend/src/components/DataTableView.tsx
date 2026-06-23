@@ -7,7 +7,16 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import {
+  DataEditor,
+  GridCellKind,
+  type DataEditorRef,
+  type GridCell,
+  type GridColumn,
+  type Item,
+  type Rectangle,
+} from '@glideapps/glide-data-grid'
+import '@glideapps/glide-data-grid/dist/index.css'
 import { X } from 'lucide-react'
 import {
   api,
@@ -19,9 +28,10 @@ import {
 import { SchemaBanner } from '@/components/SchemaBanner'
 import { FilterPanel } from '@/components/FilterPanel'
 import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
-import { ColumnMenu, VirtualTable } from '@/components/DataTableShell'
+import { ColumnMenu } from '@/components/DataTableShell'
 import { ExportMenu } from '@/components/ExportMenu'
-import { ROW_HEIGHT } from '@/lib/table'
+import { GLIDE_THEME } from '@/lib/glideTheme'
+import { renderCell } from '@/lib/table'
 
 const PAGE_SIZE = 200
 
@@ -72,7 +82,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
   const loadedPagesRef = useRef<Set<number>>(new Set())
   const inflightRef = useRef<Set<number>>(new Set())
   const reqTokenRef = useRef(0)
-  const parentRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<DataEditorRef>(null)
   const visInitRef = useRef(false)
 
   const sort: SortState = sorting[0]
@@ -131,7 +141,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
     loadedPagesRef.current = new Set()
     inflightRef.current = new Set()
     setError(null)
-    if (parentRef.current) parentRef.current.scrollTop = 0
+    gridRef.current?.scrollTo(0, 0)
     setVersion((v) => v + 1)
     void fetchPage(0)
   }, [filtersKey, sort?.col, sort?.dir, fileId, fetchPage])
@@ -176,23 +186,15 @@ export function DataTableView({ fileId }: { fileId: number }) {
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const rowVirtualizer = useVirtualizer({
-    count: filtered,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 16,
-  })
-
-  const virtualItems = rowVirtualizer.getVirtualItems()
-  const firstIndex = virtualItems[0]?.index ?? 0
-  const lastIndex = virtualItems[virtualItems.length - 1]?.index ?? 0
-
-  useEffect(() => {
-    if (filtered === 0) return
-    const firstPage = Math.floor(firstIndex / PAGE_SIZE)
-    const lastPage = Math.floor(lastIndex / PAGE_SIZE)
-    for (let p = firstPage; p <= lastPage; p++) void fetchPage(p)
-  }, [firstIndex, lastIndex, filtered, fetchPage])
+  // Fetch the server pages covering Glide's visible row region.
+  const onVisibleRegionChanged = useCallback(
+    (r: Rectangle) => {
+      const firstPage = Math.floor(r.y / PAGE_SIZE)
+      const lastPage = Math.floor((r.y + r.height) / PAGE_SIZE)
+      for (let p = firstPage; p <= lastPage; p++) void fetchPage(p)
+    },
+    [fetchPage]
+  )
 
   if (error) {
     return (
@@ -227,6 +229,25 @@ export function DataTableView({ fileId }: { fileId: number }) {
 
   const visibleCols = table.getVisibleLeafColumns()
   const visibleCount = visibleCols.length
+
+  const gridColumns: GridColumn[] = visibleCols.map((c) => ({
+    id: c.id,
+    title: sort?.col === c.id ? `${c.id} ${sort.dir === 'asc' ? '↑' : '↓'}` : c.id,
+    width: c.getSize(),
+  }))
+
+  // Reads rowsRef (a ref); page loads bump `version` to force a re-render.
+  function getCellContent([col, row]: Item): GridCell {
+    const r = rowsRef.current[row]
+    const id = visibleCols[col]?.id
+    const t = r && id ? renderCell(r[colIndex[id]]) : ''
+    return { kind: GridCellKind.Text, data: t, displayData: t, allowOverlay: false }
+  }
+
+  const gridHeight = Math.max(
+    360,
+    Math.round((typeof window !== 'undefined' ? window.innerHeight : 900) * 0.66)
+  )
 
   return (
     <div className="space-y-3">
@@ -289,20 +310,32 @@ export function DataTableView({ fileId }: { fileId: number }) {
         </div>
       )}
 
-      <VirtualTable
-        table={table}
-        parentRef={parentRef}
-        virtualItems={virtualItems}
-        totalSize={rowVirtualizer.getTotalSize()}
-        colIndex={colIndex}
-        getRow={(i) => rowsRef.current[i]}
-        sortDir={(id) => (sort?.col === id ? sort.dir : null)}
-        onToggleSort={toggleSort}
-        isEmpty={filtered === 0}
-        emptyText="No rows match the current filters"
-        fit
-        maxHeight="70vh"
-      />
+      {filtered === 0 ? (
+        <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+          No rows match the current filters
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <DataEditor
+            ref={gridRef}
+            theme={GLIDE_THEME}
+            columns={gridColumns}
+            rows={filtered}
+            getCellContent={getCellContent}
+            getCellsForSelection
+            onHeaderClicked={(col) => toggleSort(visibleCols[col].id)}
+            onColumnResize={(c, w) =>
+              table.setColumnSizing((s) => ({ ...s, [c.id as string]: w }))
+            }
+            onVisibleRegionChanged={onVisibleRegionChanged}
+            rowMarkers="number"
+            smoothScrollX
+            smoothScrollY
+            width="100%"
+            height={gridHeight}
+          />
+        </div>
+      )}
     </div>
   )
 }

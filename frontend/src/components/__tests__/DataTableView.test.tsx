@@ -1,3 +1,4 @@
+import { createElement } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { DataTableView } from '@/components/DataTableView'
@@ -6,6 +7,32 @@ import type { RowsPage, RowsQuery } from '@/lib/api'
 const getRows = vi.fn()
 vi.mock('@/lib/api', () => ({
   api: { getRows: (id: number, q: RowsQuery) => getRows(id, q) },
+}))
+
+// Glide renders to <canvas> (needs ResizeObserver) — stub it as header buttons
+// so we can still assert columns + header-click sort in jsdom.
+interface GlideStubCol {
+  id: string
+  title: string
+}
+interface GlideStubProps {
+  columns: GlideStubCol[]
+  onHeaderClicked?: (col: number) => void
+}
+vi.mock('@glideapps/glide-data-grid', () => ({
+  GridCellKind: { Text: 'text' },
+  DataEditor: (props: GlideStubProps) =>
+    createElement(
+      'div',
+      { 'data-testid': 'glide' },
+      props.columns.map((c, i) =>
+        createElement(
+          'button',
+          { key: c.id, onClick: () => props.onHeaderClicked?.(i) },
+          c.title
+        )
+      )
+    ),
 }))
 
 const COLUMNS = ['record_id', 'project', 'sample']
