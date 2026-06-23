@@ -347,6 +347,28 @@ export const api = {
     )
   },
 
+  /** Download an arbitrary client-side table (columns + rows) as xlsx/csv. */
+  async exportTable(
+    columns: string[],
+    rows: Cell[][],
+    filename: string,
+    fmt: 'xlsx' | 'csv'
+  ): Promise<void> {
+    const resp = await fetch(`${API_BASE}/api/export-table`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ columns, rows, filename, fmt }),
+    })
+    if (!resp.ok) throw new Error(`Export failed (${resp.status})`)
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filename}.${fmt}`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
   /** URL that downloads the current filtered/sorted view as .xlsx or .csv. */
   exportUrl(
     id: number,

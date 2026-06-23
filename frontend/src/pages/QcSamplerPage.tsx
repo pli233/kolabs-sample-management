@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { api, type QcParams, type QcResult } from '@/lib/api'
+import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/DataTable'
 
 export function QcSamplerPage() {
-  const [project, setProject] = useState('')
-  const [boxes, setBoxes] = useState('')
-  const [perBox, setPerBox] = useState(5)
-  const [seed, setSeed] = useState('')
-  const [result, setResult] = useState<QcResult | null>(null)
+  const [project, setProject] = usePersistentState('qc.project', '')
+  const [boxes, setBoxes] = usePersistentState('qc.boxes', '')
+  const [perBox, setPerBox] = usePersistentState('qc.perBox', 5)
+  const [seed, setSeed] = usePersistentState('qc.seed', '')
+  const [result, setResult] = usePersistentState<QcResult | null>('qc.result', null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,9 +132,7 @@ export function QcSamplerPage() {
           <DataTable
             columns={result.columns}
             rows={result.rows}
-            exportUrlFor={(fmt) =>
-              api.qcExportUrl({ ...params(), seed: result.seed }, fmt)
-            }
+            exportName={`qc_${project.trim() || 'sample'}_seed${result.seed}`}
           />
         </div>
       )}
