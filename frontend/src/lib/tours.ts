@@ -30,8 +30,8 @@ export const TOURS: Record<string, TourStep[]> = {
     },
     {
       title: 'Export',
-      body: 'Download the current filtered, sorted view as a styled Excel file.',
-      selector: 'button[aria-label="Export to Excel"]',
+      body: 'Download the current filtered, sorted view as a styled Excel or CSV file.',
+      selector: 'button[aria-label="Export"]',
     },
   ],
   '/box-lookup': [

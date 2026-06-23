@@ -82,11 +82,11 @@ export function Tour({ steps, onClose }: TourProps) {
         className="absolute w-[340px] max-w-[92vw] rounded-xl border border-border bg-card p-4 shadow-2xl"
         style={tip}
         role="dialog"
-        aria-label="Feature tour"
+        aria-label="Guide"
       >
         <button
           onClick={onClose}
-          aria-label="Close tour"
+          aria-label="Close guide"
           className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-muted"
         >
           <X className="h-4 w-4" />
