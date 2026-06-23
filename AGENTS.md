@@ -26,8 +26,9 @@ backend/            FastAPI app (Python 3.12)
     schemas/        Main-library 43-col schema registry
     tools/          box_lookup, qc, aliquot, scan reconcilers
   tests/            pytest (uses data/sample_database.xlsx as a fixture)
-  desktop.py        Desktop launcher (pywebview window, browser fallback)
-  build_dmg.sh      Build the macOS .app + .dmg
+  server.py         Headless uvicorn entry (the Electron sidecar)
+electron/           Electron desktop shell (main.cjs spawns the backend sidecar)
+  build-dmg.sh      Build the packaged .dmg (freezes backend + electron-builder)
 frontend/           Vite + React + TS + Tailwind, shadcn-style UI
   src/components/    DataTable (client), DataTableView (server-paginated),
                      DataTableShell (shared header/rows/col-menu), ExportMenu,
@@ -102,7 +103,10 @@ for both), `make test`, `make lint`, `make build`, `make dmg`, `make docker`.
   `render.yaml` Blueprint, set `DB_URL` to a Supabase Postgres connection string.
   Use the **Session pooler** string (IPv4; Render free can't reach Supabase's
   IPv6 direct connection) and ensure it starts with `postgresql://`.
-- **Desktop app.** `make dmg` builds an unsigned Apple-Silicon `.app` + `.dmg`
-  (drag-to-Applications). First launch needs a one-time Gatekeeper approval
-  (System Settings → Privacy & Security → Open Anyway). DB lives in
-  `~/Library/Application Support/Kolabs Sample Management/`.
+- **Desktop app.** Electron shell (`electron/`) + Python sidecar: `electron/main.cjs`
+  picks a free port, spawns `backend/server.py` (or the bundled `kolabs-backend`
+  binary when packaged), waits for `/api/health`, then loads the SPA from it.
+  Downloads are handled natively (`will-download` → ~/Downloads + reveal). Dev:
+  `make electron`. Package: `make dmg` → `electron/dist/*.dmg` (unsigned,
+  Apple-Silicon; freezes the backend via PyInstaller then runs electron-builder).
+  DB lives in `~/Library/Application Support/Kolabs Sample Management/`.

@@ -55,8 +55,8 @@ electron-install: ## Install Electron deps (once)
 electron: build ## Run the desktop app in dev (Electron + Python sidecar)
 	cd electron && npm start
 
-dmg: ## Build the macOS .app + .dmg (Apple Silicon) -> backend/dist/
-	cd $(BACKEND) && ./build_dmg.sh
+dmg: ## Build the Electron .dmg (Apple Silicon) -> electron/dist/
+	./electron/build-dmg.sh
 
 docker: ## Build the production Docker image (SPA + API in one)
 	docker build -t kolabs-sample-management .

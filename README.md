@@ -110,15 +110,20 @@ locally.
 
 ## Desktop app (macOS)
 
+An **Electron** shell wraps the same React UI and Python backend (spawned as a
+local sidecar; downloads are handled natively).
+
 ```bash
-make dmg            # -> backend/dist/KolabsSampleManagement.dmg
+make electron-install   # once
+make electron           # run in dev
+make dmg                # package -> electron/dist/*.dmg (Apple Silicon)
 ```
 
-Builds an Apple-Silicon `.app` + `.dmg` (drag-to-Applications) that bundles
-Python + the SPA — no install needed on the target Mac. It's **unsigned**, so the
-first launch needs a one-time approval (System Settings → Privacy & Security →
-Open Anyway). Data is stored in `~/Library/Application Support/Kolabs Sample
-Management/` and persists across launches.
+The `.dmg` bundles Electron + a frozen Python backend + the SPA — no install
+needed on the target Mac. It's **unsigned**, so the first launch needs a one-time
+approval (System Settings → Privacy & Security → Open Anyway). Data is stored in
+`~/Library/Application Support/Kolabs Sample Management/` and persists across
+launches.
 
 ## Git workflow
 
