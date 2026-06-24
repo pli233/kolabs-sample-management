@@ -50,10 +50,11 @@ interface GlideTableProps {
   /** Column to group by: pinned first, with alternating shading per group. */
   groupBy?: string
   /**
-   * Enable a left checkbox column with radio-per-group semantics: exactly one
-   * row may be picked per distinct value of this column. Picks default to each
-   * group's first row (the PRIMARY candidate) and survive sort/filter (tracked
-   * by row identity, not index). Adds an "Export picks" action.
+   * Enable a left checkbox column for free multi-select. Each group's first row
+   * (its PRIMARY candidate) is checked by default, but any rows may be picked or
+   * unpicked with no per-group restriction. Picks survive sort/filter (tracked
+   * by row identity, not index). One or more columns form the group used for the
+   * default seed and for keying pickExtras. Adds an "Export picks" action.
    */
   pickGroupBy?: string | string[]
   /**
@@ -146,24 +147,30 @@ export function GlideTable({
     (r: Cell[]) => pickCols.map((c) => text(r[colIndex[c]])).join(''),
     [colIndex, pickCols]
   )
-  function seedPicks(rs: Cell[][]): Map<string, Cell[]> {
-    const m = new Map<string, Cell[]>()
-    if (!picking) return m
+  // Default-check each group's first row (the PRIMARY candidate); the user is
+  // then free to check/uncheck any rows — no one-per-group restriction.
+  function seedPicks(rs: Cell[][]): Set<Cell[]> {
+    const s = new Set<Cell[]>()
+    if (!picking) return s
+    const seen = new Set<string>()
     for (const r of rs) {
       const g = groupVal(r)
-      if (!m.has(g)) m.set(g, r) // first row per group = PRIMARY candidate
+      if (!seen.has(g)) {
+        seen.add(g)
+        s.add(r)
+      }
     }
-    return m
+    return s
   }
   // Re-seed picks when the result set changes — the React-recommended render-time
   // reset (https://react.dev/learn/you-might-not-need-an-effect), no effect needed.
   const [prevRows, setPrevRows] = useState(rows)
-  const [picks, setPicks] = useState<Map<string, Cell[]>>(() => seedPicks(rows))
+  const [picks, setPicks] = useState<Set<Cell[]>>(() => seedPicks(rows))
   if (rows !== prevRows) {
     setPrevRows(rows)
     setPicks(seedPicks(rows))
   }
-  const pickedSet = useMemo(() => new Set(picks.values()), [picks])
+  const pickedSet = picks
 
   // Editable destination columns, keyed by the pick group (project + project_id)
   // so a typed value follows that aliquot. Persisted by group, never reset by a
@@ -302,21 +309,21 @@ export function GlideTable({
     ]
   )
 
-  // Radio-per-group: picking a row replaces its group's pick; re-clicking clears it.
+  // Free multi-select: clicking a row's checkbox toggles it; any number of rows
+  // may be picked, with no per-group restriction.
   const onCellClicked = useCallback(
     ([col, row]: Item) => {
       if (!picking || col !== 0) return
       const r = view[row]
       if (!r) return
-      const g = groupVal(r)
       setPicks((prev) => {
-        const next = new Map(prev)
-        if (next.get(g) === r) next.delete(g)
-        else next.set(g, r)
+        const next = new Set(prev)
+        if (next.has(r)) next.delete(r)
+        else next.add(r)
         return next
       })
     },
-    [picking, view, groupVal]
+    [picking, view]
   )
 
   // Persist edits to an extra destination cell, keyed by the row's group, but
