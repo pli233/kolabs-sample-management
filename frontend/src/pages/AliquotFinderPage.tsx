@@ -18,6 +18,7 @@ const DEFAULT_VISIBLE = [
   'total_count',
   'box',
   'sample_pos',
+  'volume_ul',
   'note',
 ]
 

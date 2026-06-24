@@ -14,7 +14,8 @@ OUTPUT_COLS = [
     "input_id", "matched_project_id", "choice", "choice_rank",
     "selected_freezer", "selected_freezer_count", "total_count",
     "project", "freezer", "rack", "drawer", "box_pos", "box",
-    "sample_pos", "aliquot", "cryobank", "track_id", "record_id", "note",
+    "sample_pos", "aliquot", "volume_ul", "cryobank", "track_id", "record_id",
+    "note",
 ]
 
 _SPLIT = re.compile(r"[\s,;]+")
@@ -118,7 +119,8 @@ def find_aliquots(
                     primary_frz, counts.get(primary_frz, 0), total,
                     cell(r, "project"), cell(r, "freezer"), cell(r, "rack"),
                     cell(r, "drawer"), cell(r, "box_pos"), cell(r, "box"),
-                    cell(r, "sample_pos"), cell(r, "aliquot"), cell(r, "cryobank"),
+                    cell(r, "sample_pos"), cell(r, "aliquot"),
+                    cell(r, "volume_ul"), cell(r, "cryobank"),
                     cell(r, "track_id"), cell(r, "record_id"),
                     note if rank == 1 else "",
                 ]
@@ -128,5 +130,5 @@ def find_aliquots(
 
 
 def _not_found(person: str, note: str) -> list:
-    row = [person, "", "NOT FOUND", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", note]
-    return row
+    # person, matched_project_id, choice, …blank middle cols…, note
+    return [person, "", "NOT FOUND", *[""] * (len(OUTPUT_COLS) - 4), note]

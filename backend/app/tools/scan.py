@@ -180,6 +180,8 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
         loc = {"project": proj, "box": box, "position": pos,
                "record_id": r[rec_i] if rec_i is not None else None}
         if code:
+            # full DB record so wrong_location rows can show every column
+            loc["record"] = dict(zip(cols, r))
             db_by_code.setdefault(code, []).append(loc)
             if box is not None:
                 db_by_box.setdefault((proj, box), set()).add(code)
@@ -219,8 +221,11 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
             out["correct_matches"] += 1
         else:
             exp = db_locs[0]
+            # full DB record first, then scanned values (rec) win for the
+            # blue box/position/project columns, then the red "expected" fields.
             out["wrong_location"].append(
-                {**rec, "expected_project": exp["project"],
+                {**exp.get("record", {}), **rec,
+                 "expected_project": exp["project"],
                  "expected_box": exp["box"], "expected_position": exp["position"],
                  "record_id": exp["record_id"]}
             )

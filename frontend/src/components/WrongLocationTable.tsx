@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, Undo2 } from 'lucide-react'
 import { api, type Cell, type ScanRow } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
 const show = (v: Cell) =>
   v === null || v === undefined || v === '' ? '—' : String(v)
+
+// Keys already rendered as dedicated comparison columns; the rest of each
+// record's fields are appended so the full sample record is visible.
+const DEDICATED = new Set([
+  'tube_code',
+  'project',
+  'expected_box',
+  'expected_position',
+  'box',
+  'position',
+])
 
 type Status = 'busy' | 'done' | 'error'
 
@@ -16,6 +28,18 @@ type Status = 'busy' | 'done' | 'error'
 export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
   const [state, setState] = useState<Record<number, Status>>({})
   const [applyingAll, setApplyingAll] = useState(false)
+
+  // Every other field present on the rows, in first-seen order.
+  const extraCols = useMemo(
+    () =>
+      Array.from(
+        rows.reduce((set, r) => {
+          Object.keys(r).forEach((k) => !DEDICATED.has(k) && set.add(k))
+          return set
+        }, new Set<string>())
+      ),
+    [rows]
+  )
 
   async function apply(i: number, r: ScanRow) {
     setState((s) => ({ ...s, [i]: 'busy' }))
@@ -99,7 +123,17 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
               <th className="bg-blue-50 px-3 py-2 text-blue-700">
                 Scanned position
               </th>
-              <th className="px-3 py-2 text-right">Action</th>
+              {extraCols.map((c) => (
+                <th
+                  key={c}
+                  className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground"
+                >
+                  {c}
+                </th>
+              ))}
+              <th className="sticky right-0 bg-muted px-3 py-2 text-right">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -127,7 +161,20 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
                   <td className="bg-blue-50/60 px-3 py-1.5 font-medium text-blue-700">
                     {show(r.position)}
                   </td>
-                  <td className="px-3 py-1.5 text-right">
+                  {extraCols.map((c) => (
+                    <td
+                      key={c}
+                      className="whitespace-nowrap px-3 py-1.5 text-muted-foreground"
+                    >
+                      {show(r[c])}
+                    </td>
+                  ))}
+                  <td
+                    className={cn(
+                      'sticky right-0 px-3 py-1.5 text-right',
+                      done ? 'bg-green-50' : 'bg-card'
+                    )}
+                  >
                     {done ? (
                       <span className="inline-flex items-center gap-2">
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
