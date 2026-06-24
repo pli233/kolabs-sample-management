@@ -5,6 +5,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GlideTable } from '@/components/GlideTable'
 
+// The pick summary plus where to grab the tube; per-tube detail columns
+// (project, rack, drawer, box_pos, aliquot, cryobank, track_id, record_id)
+// stay unchecked-but-available in the Columns menu.
+const DEFAULT_VISIBLE = [
+  'input_id',
+  'matched_project_id',
+  'choice',
+  'choice_rank',
+  'selected_freezer',
+  'selected_freezer_count',
+  'total_count',
+  'box',
+  'sample_pos',
+  'note',
+]
+
 export function AliquotFinderPage() {
   const [ids, setIds] = usePersistentState('aliquot.ids', '')
   const [preferredFreezer, setPreferredFreezer] = usePersistentState(
@@ -111,7 +127,10 @@ export function AliquotFinderPage() {
         <GlideTable
           columns={result.columns}
           rows={result.rows}
+          defaultVisible={DEFAULT_VISIBLE}
           exportName="aliquot_finder"
+          pickGroupBy="input_id"
+          pickExtras={['new_box', 'new_position']}
           rowTint={(row) => {
             const ci = result.columns.indexOf('choice')
             return ci >= 0 && row[ci] === 'PRIMARY' ? '#bae6fd' : undefined
