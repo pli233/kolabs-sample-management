@@ -4,6 +4,7 @@ import {
   Boxes,
   Database,
   Dices,
+  Grid3x3,
   LayoutDashboard,
   Menu,
   PlayCircle,
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/qc-sampler', label: 'QC Sampler', icon: Dices },
   { to: '/aliquot-finder', label: 'Aliquot Finder', icon: TestTube2 },
   { to: '/scan-reconcile', label: 'Scan Reconcile', icon: ScanLine },
+  { to: '/plate-map', label: 'Plate Map', icon: Grid3x3 },
   { to: '/feeds', label: 'Data Feeds', icon: Database },
 ]
 

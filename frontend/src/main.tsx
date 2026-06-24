@@ -26,6 +26,9 @@ const ScanReconcilePage = lazy(() =>
 const DataFeedsPage = lazy(() =>
   import('./pages/DataFeedsPage').then((m) => ({ default: m.DataFeedsPage }))
 )
+const PlateMapPage = lazy(() =>
+  import('./pages/PlateMapPage').then((m) => ({ default: m.PlateMapPage }))
+)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -41,6 +44,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/qc-sampler" element={<QcSamplerPage />} />
             <Route path="/aliquot-finder" element={<AliquotFinderPage />} />
             <Route path="/scan-reconcile" element={<ScanReconcilePage />} />
+            <Route path="/plate-map" element={<PlateMapPage />} />
             <Route path="/feeds" element={<DataFeedsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
