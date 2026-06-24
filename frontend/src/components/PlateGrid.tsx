@@ -19,11 +19,11 @@ export function PlateGrid({
   const [editing, setEditing] = useState<string | null>(null)
 
   return (
-    <div className="inline-block overflow-auto rounded-lg border border-border bg-card p-2">
+    <div className="max-w-full overflow-auto rounded-lg border border-border bg-card p-2">
       <div
         className="grid gap-1"
         style={{
-          gridTemplateColumns: `2rem repeat(${cols}, minmax(3.5rem, 1fr))`,
+          gridTemplateColumns: `2rem repeat(${cols}, 3.75rem)`,
         }}
       >
         {/* header row: blank corner + column numbers */}

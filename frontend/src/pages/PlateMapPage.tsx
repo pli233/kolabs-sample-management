@@ -6,6 +6,9 @@ import { ExportMenu } from '@/components/ExportMenu'
 import { PlateGrid } from '@/components/PlateGrid'
 import { formatPosition, parsePosition, rowToLetters } from '@/lib/position'
 
+/** Column-header words to ignore when a pasted block carries them inline. */
+const HEADER = new Set(['sample_info', 'sample info', 'samples', 'position', 'box'])
+
 export function PlateMapPage() {
   const [boxName, setBoxName] = usePersistentState('plate.boxName', '1')
   const [rows, setRows] = usePersistentState('plate.rows', 8)
@@ -32,32 +35,46 @@ export function PlateMapPage() {
     })
   }
 
-  /** Paste into a Sample_Info cell at `start`. A tab-delimited block is treated
-   *  as Position+Label pairs and scattered to the parsed wells; a single column
-   *  fills consecutive positions from `start`. */
+  /** Paste a block into the list at row `start`. Two shapes are accepted:
+   *  - Position+Label pairs (every row starts with a valid position like "A01"):
+   *    each label is scattered to its parsed well.
+   *  - A grid/column of bare labels (the Export-Plate / Export-List shape): the
+   *    cells are read row-major from `start` filling consecutive positions.
+   *    Header tokens (Sample_Info, Box, …) are skipped without eating a well. */
   function handlePaste(e: React.ClipboardEvent, start: number) {
     const text = e.clipboardData.getData('text')
     if (!text || (!text.includes('\n') && !text.includes('\t'))) return // single value: default
     e.preventDefault()
-    const lines = text.replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '')
+    const grid = text
+      .replace(/\r/g, '')
+      .replace(/\n+$/, '')
+      .split('\n')
+      .map((l) => l.split('\t'))
+    const inRange = (p: ReturnType<typeof parsePosition>) =>
+      !!p && p.row < rows && p.col <= cols
+    const isPairs =
+      grid.length > 0 &&
+      grid.every((row) => row.length >= 2 && inRange(parsePosition(row[0])))
+
     setCells((prev) => {
       const next = { ...prev }
-      if (text.includes('\t')) {
-        for (const line of lines) {
-          const [posRaw, ...rest] = line.split('\t')
-          const parsed = parsePosition(posRaw)
-          if (!parsed || parsed.row >= rows || parsed.col > cols) continue
-          const lbl = rest.join('\t').trim()
-          if (lbl) next[parsed.canonical] = lbl
-          else delete next[parsed.canonical]
+      const assign = (pos: string, lbl: string) => {
+        if (lbl) next[pos] = lbl
+        else delete next[pos]
+      }
+      if (isPairs) {
+        for (const row of grid) {
+          assign(parsePosition(row[0])!.canonical, row.slice(1).join('\t').trim())
         }
       } else {
-        lines.forEach((lbl, k) => {
-          const p = positions[start + k]
-          if (!p) return
-          if (lbl.trim()) next[p] = lbl.trim()
-          else delete next[p]
-        })
+        let i = 0
+        for (const cell of grid.flat()) {
+          const v = cell.trim()
+          if (HEADER.has(v.toLowerCase())) continue // header label, not a sample
+          const p = positions[start + i++]
+          if (!p) break
+          assign(p, v)
+        }
       }
       return next
     })
@@ -141,12 +158,12 @@ export function PlateMapPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-6">
-        {/* plate (left) */}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+        {/* plate (left) — bounded; scrolls horizontally instead of pushing the list */}
         <PlateGrid rows={rows} cols={cols} cells={cells} onCellChange={setCell} />
 
         {/* data list (right) */}
-        <div className="min-w-[18rem] flex-1">
+        <div className="min-w-0">
           <div className="mb-2 text-xs text-muted-foreground">
             {filled} / {positions.length} wells filled
           </div>
