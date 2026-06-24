@@ -25,7 +25,9 @@ function freePort() {
 function spawnBackend(port) {
   const env = { ...process.env, PORT: String(port) }
   if (app.isPackaged) {
-    const exe = path.join(process.resourcesPath, 'backend', 'kolabs-backend')
+    const bin =
+      process.platform === 'win32' ? 'kolabs-backend.exe' : 'kolabs-backend'
+    const exe = path.join(process.resourcesPath, 'backend', bin)
     return spawn(exe, [], { env })
   }
   const repo = path.join(__dirname, '..')

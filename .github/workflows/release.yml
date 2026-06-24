@@ -1,0 +1,98 @@
+name: release
+
+# Builds all three installers on native runners and (on a version tag) publishes
+# them to a GitHub Release. Each runner uses native Python 3.12 + Node 20, so the
+# Python backend is frozen with a consistent toolchain — no Rosetta / version
+# hacks. Trigger a build without publishing via "Run workflow" (workflow_dispatch);
+# publish by pushing a tag, e.g. `git tag v1.0.0 && git push origin v1.0.0`.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14        # Apple Silicon
+            pack: npx electron-builder --mac dmg --arm64
+            sep: ':'
+            artifact: '*-arm64.dmg'
+          - os: macos-13        # Intel
+            pack: npx electron-builder --mac dmg --x64
+            sep: ':'
+            artifact: '*-x64.dmg'
+          - os: windows-latest
+            pack: npx electron-builder --win nsis --x64
+            sep: ';'
+            artifact: '*Setup.exe'
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # --- frontend SPA ---
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+      # --- freeze the Python backend (native, so int|None just works) ---
+      - name: Freeze backend
+        working-directory: backend
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt pyinstaller
+          pyinstaller --noconfirm --name kolabs-backend \
+            --add-data "../frontend/dist${{ matrix.sep }}frontend/dist" \
+            --collect-all uvicorn \
+            --collect-submodules app \
+            --hidden-import app.main \
+            server.py
+
+      # --- package the desktop app ---
+      - run: npm ci
+        working-directory: electron
+      - name: Package
+        working-directory: electron
+        run: ${{ matrix.pack }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: electron/dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" $(find dist -type f) \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
