@@ -236,12 +236,19 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
                 {**rec, "db_codes_at_position": ", ".join(owners)}
             )
 
-    # database tubes expected in a scanned box but not scanned
+    # database tubes expected in a scanned box but not scanned — attach the
+    # full DB record (these tubes are in the database) like wrong_location does.
     for (proj, box), scanned in scanned_box_codes.items():
         for code in db_by_box.get((proj, box), set()):
             if code not in scanned:
+                loc = next(
+                    (l for l in db_by_code.get(code, [])
+                     if l["project"] == proj and l["box"] == box),
+                    None,
+                )
                 out["database_not_in_scan"].append(
-                    {"tube_code": code, "project": proj, "box": box}
+                    {**(loc.get("record") if loc else {}),
+                     "tube_code": code, "project": proj, "box": box}
                 )
 
     out["duplicate_scan_tubecodes"] = [

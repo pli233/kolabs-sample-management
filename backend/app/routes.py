@@ -633,6 +633,14 @@ _SCAN_CATEGORIES = [
     "position_conflicts", "duplicate_scan_tubecodes",
 ]
 
+# wrong_location stores the scanned location under bare keys (DB location uses
+# expected_*); relabel them so the exported sheet is unambiguous.
+_SCAN_SCANNED_LABELS = {
+    "box": "scanned_box",
+    "position": "scanned_position",
+    "project": "scanned_project",
+}
+
 
 @router.post("/scan-reconcile")
 async def scan_reconcile_route(
@@ -664,7 +672,15 @@ async def scan_reconcile_route(
     if format == "xlsx":
         sheets: dict[str, tuple[list[str], list[list]]] = {}
         for cat in _SCAN_CATEGORIES:
-            sheets[cat] = export.dicts_to_table(result[cat])
+            rows = result[cat]
+            if cat == "wrong_location":
+                # scanned location is stored under bare box/position/project;
+                # label it explicitly so the sheet reads scanned_* vs expected_*.
+                rows = [
+                    {_SCAN_SCANNED_LABELS.get(k, k): v for k, v in r.items()}
+                    for r in rows
+                ]
+            sheets[cat] = export.dicts_to_table(rows)
         sheets["file_summary"] = export.dicts_to_table(result["fileSummary"])
         return _xlsx_response_multi(sheets, "scan_reconcile")
     return result
