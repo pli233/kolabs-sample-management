@@ -33,20 +33,20 @@ def _rec(code, pos):
     return {"tube_code": code, "project": "L37", "box": "716", "position": pos, "source": "s"}
 
 
-def test_reconcile_categories():
+def test_reconcile_matches_on_tube_code_only():
     records = [
-        _rec("NTBI1", "A01"),   # correct
-        _rec("NTBI2", "A01"),   # wrong_location (exp A02) + position_conflict (A01=NTBI1)
+        _rec("NTBI1", "A01"),   # correct (code in DB)
+        _rec("NTBI2", "A01"),   # correct too — wrong slot no longer matters
         _rec("NTBX9", "A09"),   # not in database
         _rec("NTBX9", "A09"),   # duplicate
     ]
     out = reconcile(_db(), records)
-    assert out["correct_matches"] == 1
-    assert len(out["wrong_location"]) == 1
-    assert out["wrong_location"][0]["tube_code"] == "NTBI2"
+    assert out["correct_matches"] == 2  # location ignored; both codes are in the DB
     assert len(out["scan_not_in_database"]) == 2  # NTBX9 twice
-    assert any(c["tube_code"] == "NTBI2" for c in out["position_conflicts"])
-    assert any(d["tube_code"] == "NTBI3" for d in out["database_not_in_scan"])
+    # Location-based categories are no longer computed.
+    assert out["wrong_location"] == []
+    assert out["position_conflicts"] == []
+    assert out["database_not_in_scan"] == []  # NTBI3 unscanned, but not reported
     assert any(
         d["tube_code"] == "NTBX9" and d["count"] == 2
         for d in out["duplicate_scan_tubecodes"]

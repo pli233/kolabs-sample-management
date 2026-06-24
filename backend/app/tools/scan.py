@@ -1,8 +1,10 @@
 """Scan-to-database reconciliation (legacy: compare_scan_to_database).
 
 Parse physical-rack scan exports (.csv/.xlsx/.xls), de-duplicate repeated scan
-files, and reconcile against the active feed: wrong codes, wrong locations,
-missing tubes, and position conflicts.
+files, and reconcile against the active feed. Matching is by tube_code only: a
+scanned tube is correct if its code is in the active feed, otherwise it is
+flagged "scanned, not in database". Rack/box/position are recorded but not used
+to match.
 """
 from __future__ import annotations
 
@@ -11,7 +13,7 @@ import io
 import re
 from pathlib import Path
 
-from ..normalize import normalize_box, normalize_position
+from ..normalize import normalize_position
 
 # Header aliases (compared lowercased, non-alphanumeric stripped).
 _ALIASES = {
@@ -160,33 +162,22 @@ def dedup_files(by_file: dict[str, list[dict]]) -> dict:
 
 
 def reconcile(db_sheet: dict, records: list[dict]) -> dict:
-    """Categorize scan records against the database sheet."""
+    """Categorize scan records against the database by tube_code only.
+
+    A scanned tube is correct if its code (the DB `cryobank` column) exists in
+    the active feed; the scanned rack/box/position are not used for matching.
+    The location-based categories (wrong_location, position_conflicts,
+    database_not_in_scan) are kept as empty lists for output/export/UI
+    compatibility.
+    """
     cols = db_sheet["columns"]
     idx = {c: i for i, c in enumerate(cols)}
-    rows = db_sheet["rows"]
-    cb_i, pr_i, bx_i, sp_i = (
-        idx.get("cryobank"), idx.get("project"), idx.get("box"), idx.get("sample_pos")
-    )
-    rec_i = idx.get("record_id")
+    cb_i = idx.get("cryobank")
 
-    db_by_code: dict[str, list[dict]] = {}
-    db_by_pos: dict[tuple, list[str]] = {}
-    db_by_box: dict[tuple, set] = {}
-    for r in rows:
-        code = str(r[cb_i]).strip().upper() if cb_i is not None and r[cb_i] else ""
-        proj = str(r[pr_i]).strip() if pr_i is not None and r[pr_i] else ""
-        box = normalize_box(r[bx_i]) if bx_i is not None else None
-        pos = normalize_position(r[sp_i]) if sp_i is not None else None
-        loc = {"project": proj, "box": box, "position": pos,
-               "record_id": r[rec_i] if rec_i is not None else None}
-        if code:
-            # full DB record so wrong_location rows can show every column
-            loc["record"] = dict(zip(cols, r))
-            db_by_code.setdefault(code, []).append(loc)
-            if box is not None:
-                db_by_box.setdefault((proj, box), set()).add(code)
-        if box is not None and pos:
-            db_by_pos.setdefault((proj, box, pos), []).append(code)
+    db_codes: set[str] = set()
+    for r in db_sheet["rows"]:
+        if cb_i is not None and r[cb_i]:
+            db_codes.add(str(r[cb_i]).strip().upper())
 
     out = {
         "scan_not_in_database": [],
@@ -198,58 +189,14 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
     }
 
     seen_codes: dict[str, int] = {}
-    scanned_box_codes: dict[tuple, set] = {}
     valid = [r for r in records if is_valid_code(r["tube_code"])]
-
     for rec in valid:
         code = rec["tube_code"].upper()
         seen_codes[code] = seen_codes.get(code, 0) + 1
-        s_proj, s_box, s_pos = rec["project"], rec["box"], rec["position"]
-        s_boxn = normalize_box(s_box)
-        if s_boxn is not None:
-            scanned_box_codes.setdefault((s_proj, s_boxn), set()).add(code)
-
-        db_locs = db_by_code.get(code)
-        if not db_locs:
-            out["scan_not_in_database"].append(rec)
-            continue
-        match = any(
-            loc["project"] == s_proj and loc["box"] == s_boxn and loc["position"] == s_pos
-            for loc in db_locs
-        )
-        if match:
+        if code in db_codes:
             out["correct_matches"] += 1
         else:
-            exp = db_locs[0]
-            # full DB record first, then scanned values (rec) win for the
-            # blue box/position/project columns, then the red "expected" fields.
-            out["wrong_location"].append(
-                {**exp.get("record", {}), **rec,
-                 "expected_project": exp["project"],
-                 "expected_box": exp["box"], "expected_position": exp["position"],
-                 "record_id": exp["record_id"]}
-            )
-        # position conflict: DB assigns this slot to a different code
-        owners = db_by_pos.get((s_proj, s_boxn, s_pos), [])
-        if owners and code not in [o.upper() for o in owners]:
-            out["position_conflicts"].append(
-                {**rec, "db_codes_at_position": ", ".join(owners)}
-            )
-
-    # database tubes expected in a scanned box but not scanned — attach the
-    # full DB record (these tubes are in the database) like wrong_location does.
-    for (proj, box), scanned in scanned_box_codes.items():
-        for code in db_by_box.get((proj, box), set()):
-            if code not in scanned:
-                loc = next(
-                    (l for l in db_by_code.get(code, [])
-                     if l["project"] == proj and l["box"] == box),
-                    None,
-                )
-                out["database_not_in_scan"].append(
-                    {**(loc.get("record") if loc else {}),
-                     "tube_code": code, "project": proj, "box": box}
-                )
+            out["scan_not_in_database"].append(rec)
 
     out["duplicate_scan_tubecodes"] = [
         {"tube_code": c, "count": n} for c, n in seen_codes.items() if n > 1

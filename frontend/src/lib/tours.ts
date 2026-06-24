@@ -112,7 +112,7 @@ export const TOURS: Record<string, TourStep[]> = {
   '/scan-reconcile': [
     {
       title: 'Scan Reconcile',
-      body: 'Compare physical rack scans against the active feed — wrong codes, wrong locations, missing tubes, conflicts.',
+      body: 'Compare physical rack scans against the active feed by tube code — flags scanned tubes not in the feed and duplicate scans.',
       selector: 'h1',
     },
     {

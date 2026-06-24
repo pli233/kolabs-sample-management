@@ -87,8 +87,8 @@ export function ScanReconcilePage() {
           Scan Reconcile
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Reconcile physical-rack scans against the active feed — wrong codes,
-          locations, missing tubes, conflicts.
+          Reconcile physical-rack scans against the active feed, matching by tube
+          code — flags scanned tubes not in the feed and duplicate scans.
         </p>
       </div>
 
