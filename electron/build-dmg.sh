@@ -24,7 +24,10 @@ echo "==> 2/4 backend venv"
 if [ ! -x "$PY" ]; then
   "${PYRUN[@]}" /usr/bin/python3 -m venv "$VENV"
   "${PYRUN[@]}" "$PY" -m pip install -U pip
-  "${PYRUN[@]}" "$PY" -m pip install -r backend/requirements.txt pyinstaller
+  # eval_type_backport lets pydantic evaluate `int | None` annotations on the
+  # x86_64 venv's Python 3.9 (Apple's /usr/bin/python3); a no-op on 3.10+.
+  "${PYRUN[@]}" "$PY" -m pip install -r backend/requirements.txt pyinstaller \
+    eval_type_backport
 fi
 
 echo "==> 3/4 headless backend (PyInstaller onedir -> backend/dist/kolabs-backend)"
@@ -36,6 +39,7 @@ echo "==> 3/4 headless backend (PyInstaller onedir -> backend/dist/kolabs-backen
     --collect-all uvicorn \
     --collect-submodules app \
     --hidden-import app.main \
+    --hidden-import eval_type_backport \
     server.py )
 
 echo "==> 4/4 electron-builder"
