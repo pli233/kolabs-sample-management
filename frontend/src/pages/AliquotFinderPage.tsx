@@ -157,7 +157,7 @@ export function AliquotFinderPage() {
             rows={result.rows}
             defaultVisible={DEFAULT_VISIBLE}
             exportName="aliquot_finder"
-            pickGroupBy="input_id"
+            pickGroupBy={['input_project', 'input_id']}
             pickExtras={['new_box', 'new_position']}
             rowTint={(row) => {
               const ci = result.columns.indexOf('choice')

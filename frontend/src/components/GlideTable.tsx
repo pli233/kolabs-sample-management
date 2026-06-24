@@ -55,7 +55,7 @@ interface GlideTableProps {
    * group's first row (the PRIMARY candidate) and survive sort/filter (tracked
    * by row identity, not index). Adds an "Export picks" action.
    */
-  pickGroupBy?: string
+  pickGroupBy?: string | string[]
   /**
    * Editable, frontend-only text columns appended after the data columns,
    * editable only on the picked row and keyed by the pickGroupBy value (so the
@@ -130,10 +130,21 @@ export function GlideTable({
 
   // One pick per distinct pickGroupBy value, tracked by row identity so the
   // selection follows the row through sort/filter rather than a stale index.
-  const picking = !!pickGroupBy && colIndex[pickGroupBy] !== undefined
+  // pickGroupBy may be several columns: the group key is their joined values
+  // (e.g. project + project_id), filtered to those actually present so a dropped
+  // empty column falls back to the remaining key columns.
+  const pickCols = useMemo(() => {
+    const list = pickGroupBy
+      ? Array.isArray(pickGroupBy)
+        ? pickGroupBy
+        : [pickGroupBy]
+      : []
+    return list.filter((c) => colIndex[c] !== undefined)
+  }, [pickGroupBy, colIndex])
+  const picking = pickCols.length > 0
   const groupVal = useCallback(
-    (r: Cell[]) => text(r[colIndex[pickGroupBy as string]]),
-    [colIndex, pickGroupBy]
+    (r: Cell[]) => pickCols.map((c) => text(r[colIndex[c]])).join(''),
+    [colIndex, pickCols]
   )
   function seedPicks(rs: Cell[][]): Map<string, Cell[]> {
     const m = new Map<string, Cell[]>()
@@ -154,8 +165,9 @@ export function GlideTable({
   }
   const pickedSet = useMemo(() => new Set(picks.values()), [picks])
 
-  // Editable destination columns, keyed by group (input_id) so a typed value
-  // follows the aliquot id. Persisted by group, never reset by a new search.
+  // Editable destination columns, keyed by the pick group (project + project_id)
+  // so a typed value follows that aliquot. Persisted by group, never reset by a
+  // new search.
   const hasExtras = picking && !!pickExtras?.length
   const extraKeys = useMemo(() => (hasExtras ? pickExtras! : []), [hasExtras, pickExtras])
   const [extras, setExtras] = usePersistentState<
@@ -481,6 +493,7 @@ export function GlideTable({
           )}
           {exportName && (
             <ExportMenu
+              label={picking ? 'Export all rows' : 'Export'}
               onSelect={(fmt) =>
                 api
                   .exportTable(
