@@ -609,19 +609,17 @@ def _drop_empty_columns(
 def aliquot_finder_route(
     ids: str = Query(..., min_length=1),
     preferred_freezer: str | None = Query(None),
-    preferred_project: str | None = Query(None),
     backups: int = Query(3, ge=0),
     format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person.
-    Prefer a freezer and/or a project; all-empty columns are dropped."""
-    id_list = aliquot.parse_ids(ids)
-    if not id_list:
+    `ids` is newline-delimited (project, project_id) pairs (tab/2+ spaces
+    between the two cells); prefer a freezer; all-empty columns are dropped."""
+    pairs = aliquot.parse_pairs(ids)
+    if not pairs:
         raise HTTPException(status_code=400, detail="No ids provided")
     sheet = _primary_sheet(_active_record())
-    result = aliquot.find_aliquots(
-        sheet, id_list, preferred_freezer, backups, preferred_project
-    )
+    result = aliquot.find_aliquots(sheet, pairs, preferred_freezer, backups)
     columns, rows = _drop_empty_columns(result["columns"], result["rows"])
     if format in ("xlsx", "csv"):
         return _table_response(columns, rows, "aliquot_finder", format)

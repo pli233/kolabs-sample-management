@@ -89,19 +89,14 @@ export const TOURS: Record<string, TourStep[]> = {
       selector: 'h1',
     },
     {
-      title: 'Paste IDs',
-      body: 'IDs without a decimal match all aliquots of that person. Separate by spaces, commas, or newlines.',
-      selector: 'textarea[aria-label="IDs"]',
+      title: 'Paste project + ID pairs',
+      body: 'Paste two columns (project, project_id) from Excel — one pair per line. The project disambiguates IDs that repeat across projects. An ID without a decimal matches all aliquots of that person.',
+      selector: 'textarea[aria-label="Project and ID pairs"]',
     },
     {
       title: 'Preferred freezer',
       body: 'Optional — bias the PRIMARY pick toward tubes in this freezer.',
       selector: 'input[aria-label="Preferred freezer"]',
-    },
-    {
-      title: 'Preferred project',
-      body: 'Optional — bias the PRIMARY pick toward this project.',
-      selector: 'input[aria-label="Preferred project"]',
     },
     {
       title: 'Backups',

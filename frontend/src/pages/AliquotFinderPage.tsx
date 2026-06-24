@@ -10,6 +10,7 @@ import { GlideTable } from '@/components/GlideTable'
 // stay unchecked-but-available in the Columns menu.
 const DEFAULT_VISIBLE = [
   'input_id',
+  'input_project',
   'matched_project_id',
   'choice',
   'choice_rank',
@@ -28,10 +29,6 @@ export function AliquotFinderPage() {
     'aliquot.freezer',
     ''
   )
-  const [preferredProject, setPreferredProject] = usePersistentState(
-    'aliquot.project',
-    ''
-  )
   const [backups, setBackups] = usePersistentState('aliquot.backups', 3)
   const [result, setResult] = usePersistentState<ToolTable | null>(
     'aliquot.result',
@@ -39,24 +36,33 @@ export function AliquotFinderPage() {
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // True only for a result produced this mount; a restored result is flagged stale.
+  const [freshRun, setFreshRun] = useState(false)
 
   function params(): AliquotParams {
-    return { ids: ids.trim(), preferredFreezer, preferredProject, backups }
+    return { ids: ids.trim(), preferredFreezer, backups }
   }
 
-  async function run(e: React.FormEvent) {
-    e.preventDefault()
+  // Run the search from the current inputs. Retry re-invokes this directly, so a
+  // failed request never makes the user re-type anything.
+  async function execute() {
     if (!ids.trim()) return
     setLoading(true)
     setError(null)
     try {
       setResult(await api.aliquotFinder(params()))
+      setFreshRun(true)
     } catch (err) {
       setError((err as Error).message)
       setResult(null)
     } finally {
       setLoading(false)
     }
+  }
+
+  function run(e: React.FormEvent) {
+    e.preventDefault()
+    void execute()
   }
 
   return (
@@ -66,8 +72,9 @@ export function AliquotFinderPage() {
           Aliquot Finder
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          A PRIMARY tube plus BACKUP tubes per ID. An ID without a decimal matches
-          all of that person’s aliquots.
+          A PRIMARY tube plus BACKUP tubes per ID. Paste two columns (project,
+          project_id) straight from Excel — one pair per line. An ID without a
+          decimal matches all of that person’s aliquots.
         </p>
       </div>
 
@@ -75,8 +82,8 @@ export function AliquotFinderPage() {
         <textarea
           value={ids}
           onChange={(e) => setIds(e.target.value)}
-          placeholder="Paste IDs, separated by spaces, commas, or newlines&#10;e.g. 425280.01  416180  418150.02"
-          aria-label="IDs"
+          placeholder="Paste two Excel columns — one pair per line&#10;e.g.&#10;L37&#9;425280.01&#10;L40&#9;416180"
+          aria-label="Project and ID pairs"
           rows={3}
           className="w-full max-w-2xl rounded-md border border-border bg-card px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
@@ -88,16 +95,6 @@ export function AliquotFinderPage() {
               onChange={(e) => setPreferredFreezer(e.target.value)}
               placeholder="any"
               aria-label="Preferred freezer"
-              className="w-32"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            Preferred project (optional)
-            <Input
-              value={preferredProject}
-              onChange={(e) => setPreferredProject(e.target.value)}
-              placeholder="any"
-              aria-label="Preferred project"
               className="w-32"
             />
           </label>
@@ -115,28 +112,59 @@ export function AliquotFinderPage() {
           <Button type="submit" disabled={loading || !ids.trim()}>
             {loading ? 'Finding…' : 'Find'}
           </Button>
+          {!ids.trim() && (
+            <span className="self-center text-xs text-muted-foreground">
+              Enter at least one ID to search
+            </span>
+          )}
         </div>
       </form>
 
       {error && (
-        <p className="text-sm text-[var(--destructive)]" role="alert">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-3 py-2"
+        >
+          <span className="text-sm text-[var(--destructive)]">{error}</span>
+          <span className="text-xs text-muted-foreground">
+            Check your IDs and that a feed is active, then try again.
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={() => void execute()}>
+            Retry
+          </Button>
+        </div>
       )}
 
-      {result && (
-        <GlideTable
-          columns={result.columns}
-          rows={result.rows}
-          defaultVisible={DEFAULT_VISIBLE}
-          exportName="aliquot_finder"
-          pickGroupBy="input_id"
-          pickExtras={['new_box', 'new_position']}
-          rowTint={(row) => {
-            const ci = result.columns.indexOf('choice')
-            return ci >= 0 && row[ci] === 'PRIMARY' ? '#bae6fd' : undefined
-          }}
-        />
+      {loading && (
+        <div data-testid="results-loading" aria-hidden="true" className="space-y-2">
+          <div className="h-8 w-full max-w-md animate-pulse rounded bg-muted motion-reduce:animate-none" />
+          <div className="h-64 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        </div>
+      )}
+
+      {result && !loading && (
+        <div className="space-y-2">
+          {!freshRun && (
+            <span
+              role="status"
+              className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
+            >
+              Showing your last run
+            </span>
+          )}
+          <GlideTable
+            columns={result.columns}
+            rows={result.rows}
+            defaultVisible={DEFAULT_VISIBLE}
+            exportName="aliquot_finder"
+            pickGroupBy="input_id"
+            pickExtras={['new_box', 'new_position']}
+            rowTint={(row) => {
+              const ci = result.columns.indexOf('choice')
+              return ci >= 0 && row[ci] === 'PRIMARY' ? '#bae6fd' : undefined
+            }}
+          />
+        </div>
       )}
     </div>
   )
