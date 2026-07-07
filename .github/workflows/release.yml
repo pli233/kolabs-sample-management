@@ -96,7 +96,27 @@ jobs:
         working-directory: electron
       - name: Package
         working-directory: electron
-        run: ${{ matrix.pack }}
+        run: |
+          for attempt in 1 2 3; do
+            echo "Package attempt ${attempt}/3: ${{ matrix.pack }}"
+            if eval "${{ matrix.pack }}"; then
+              exit 0
+            fi
+
+            status=$?
+            if [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+
+            # macOS DMG creation can leave hdiutil busy on GitHub-hosted Intel
+            # runners. Clean transient state before retrying the whole package.
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              pkill -9 diskimages-helper || true
+              hdiutil info || true
+              rm -f dist/*.dmg dist/*.dmg.blockmap
+            fi
+            sleep $((attempt * 10))
+          done
 
       - name: List installer artifacts
         run: |
