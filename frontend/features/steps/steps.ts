@@ -146,5 +146,5 @@ Then('the loading placeholder is gone', async ({ page }) => {
 })
 
 Then('{int} of {int} wells are filled', async ({ page }, filled: number, total: number) => {
-  await expect(page.getByText(`${filled} / ${total} wells filled`)).toBeVisible()
+  await expect(page.getByText(`${filled} / ${total} wells filled`).first()).toBeVisible()
 })

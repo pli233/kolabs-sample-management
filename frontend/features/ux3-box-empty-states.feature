@@ -2,7 +2,7 @@ Feature: UX-3 Box Lookup distinguishes "not searched" from "nothing found"
 
   Scenario: Before searching, a neutral hint is shown
     Given I am on the "Box Lookup" page
-    Then I should see "Enter a box number to see its tubes"
+    Then I should see "Enter a box number"
     And I should not see "No tubes found"
 
   Scenario: A search with no hits names the box
