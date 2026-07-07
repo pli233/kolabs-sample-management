@@ -43,7 +43,7 @@ echo "==> 3/4 headless backend (PyInstaller onedir -> backend/dist/kolabs-backen
     server.py )
 
 echo "==> 4/4 electron-builder"
-( cd electron && npm run dist -- "${EB_FLAG[@]}" )
+( cd desktop && npm run dist -- "${EB_FLAG[@]}" )
 
 echo "==> done:"
-ls -1 electron/dist/*.dmg
+ls -1 desktop/dist/*.dmg
