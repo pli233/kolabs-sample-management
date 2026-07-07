@@ -92,7 +92,7 @@ export function AliquotFinderPage() {
           value={ids}
           onChange={(e) => setIds(e.target.value)}
           placeholder={'Paste two Excel columns, one pair per line\ne.g.\nL37\t425280.01\nL40\t416180'}
-          aria-label="Project and ID pairs"
+          aria-label="IDs / project and ID pairs"
           rows={3}
           className="w-full max-w-2xl font-mono"
         />

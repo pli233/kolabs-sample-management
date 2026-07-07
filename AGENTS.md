@@ -116,6 +116,13 @@ for both), `make test`, `make lint`, `make build`, `make docker`. Desktop builds
 - **Single image, two hosts.** `Dockerfile` builds the SPA then serves SPA+API
   from Python on `$PORT`. Both `render.yaml` (Render) and `railway.json` (Railway)
   point at that same Dockerfile — pick either.
+- **Desktop installers via GitHub Actions.** `.github/workflows/release.yml`
+  builds unsigned installers on standard hosted runners: `macos-14` for Apple
+  Silicon, `macos-15-intel` for Intel Macs, and `windows-latest` for Windows x64.
+  Every `main` push creates a prerelease (`desktop-<short-sha>`) plus 7-day
+  artifacts; manual runs can create custom prereleases; pushing a `v*` tag
+  publishes a normal GitHub Release. Keep this path unsigned/ad-hoc unless paid
+  signing/notarization is explicitly requested.
 - **Render + Supabase (free, persistent).** Push to GitHub, deploy the
   `render.yaml` Blueprint, set `DB_URL` to a Supabase Postgres connection string.
   Use the **Session pooler** string (IPv4; Render free can't reach Supabase's

@@ -110,6 +110,23 @@ Single service (API serves the built SPA). The repo ships a multi-stage
 Tables auto-create on first boot (no migrations). `make docker` builds the image
 locally.
 
+## Desktop installer builds
+
+GitHub Actions builds unsigned installers from `.github/workflows/release.yml`.
+Every push to `main` builds macOS Apple Silicon, macOS Intel, and Windows x64
+installers, uploads 7-day artifacts, and creates a prerelease named
+`desktop-<short-sha>`. Use **Actions -> desktop-installers -> Run workflow** to
+create a manual prerelease, optionally with a custom tag. Push a version tag to
+publish a normal GitHub Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This uses standard GitHub-hosted runners only. Public-repo runner minutes are
+free; no paid larger runners, signing, or notarization are required.
+
 ## Desktop app (macOS)
 
 An **Electron** shell wraps the same React UI and Python backend (spawned as a
