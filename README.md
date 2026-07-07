@@ -1,9 +1,10 @@
 # Kolabs Sample Management
 
-Lab biorepository (sample bank) management. A **FastAPI** backend serves a
-**React + Vite** SPA from one origin. Upload an Excel/CSV **data feed** (the
-newest upload becomes the active feed) and work against it with the tools below.
-The interface is **English** (Chinese only in docs/communication).
+Electron-first lab biorepository (sample bank) management. The desktop app wraps
+a **React + Vite** renderer and a local **FastAPI** Python sidecar; the same API
+can also serve the SPA for web deployments. Upload an Excel/CSV **data feed**
+(the newest upload becomes the active feed) and work against it with the tools
+below. The interface is **English** (Chinese only in docs/communication).
 
 ## Tools
 
@@ -41,15 +42,16 @@ Requires **Python 3.12+** and **Node 22+**. Everything runs through the Makefile
 (`make` lists all targets):
 
 ```bash
-make install        # backend venv + frontend deps
-make dev            # backend (:8000) + Vite dev server (:5173) together
+make install        # backend + renderer + desktop deps
+make desktop        # Electron app + local Python sidecar
 ```
 
-Open http://localhost:5173 → **Data Feeds** → drop in `data/sample_database.xlsx`
-→ pick the primary sheet → it becomes active → use the Dashboard and tools.
+In the app, go to **Data Feeds** → drop in `data/sample_database.xlsx` → pick
+the primary sheet → it becomes active → use the Dashboard and tools.
 
-Run them separately if you prefer: `make backend` and `make frontend` in two
-terminals.
+For browser-based development, run `make dev` and open http://localhost:5173.
+You can also run the API and renderer separately with `make backend` and
+`make frontend`.
 
 ## Testing
 
@@ -64,10 +66,13 @@ make lint           # tsc + eslint (run before any frontend change is "done")
 ## Architecture
 
 ```
-frontend/   Vite + React + TS + Tailwind (shadcn-style)
+desktop/    Electron desktop shell and packaging config
+            + Python sidecar launcher + native download handling
+frontend/   Vite + React + TS + Tailwind renderer (shadcn-style)
             + @tanstack/react-table (columns) + @tanstack/react-virtual (scroll)
             + recharts (dashboard) + react-router (lazy routes)
-backend/    FastAPI + openpyxl/xlrd + SQLModel (SQLite local, Postgres in prod)
+backend/    FastAPI sidecar/API + openpyxl/xlrd + SQLModel
+            (SQLite local, Postgres in prod)
 data/       sample spreadsheets / test fixtures
 ```
 
@@ -133,9 +138,9 @@ An **Electron** shell wraps the same React UI and Python backend (spawned as a
 local sidecar; downloads are handled natively).
 
 ```bash
-make electron-install   # once
-make electron           # run in dev
-make dmg                # package -> electron/dist/*.dmg (Apple Silicon)
+make install-desktop    # desktop deps only
+make desktop            # run in dev
+make dmg                # package -> desktop/dist/*.dmg (Apple Silicon)
 ```
 
 The `.dmg` bundles Electron + a frozen Python backend + the SPA — no install
@@ -146,4 +151,5 @@ launches.
 
 ## Git workflow
 
-Branch off `main` → commit → merge `--no-ff` → push.
+Branch off `main` → commit → merge `--no-ff`. Push only when explicitly
+requested; a push to `main` triggers installer builds and a prerelease.

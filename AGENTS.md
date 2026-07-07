@@ -3,6 +3,39 @@
 Working guide for AI agents (and humans) contributing to this repo. Read this
 before making changes.
 
+## How to Work Here
+
+- Start by reading this file, then load any relevant skill note under
+  `agent-skills/` before changing files.
+- Keep architecture boundaries clear: backend data/API logic in `backend/`,
+  Electron desktop shell/package logic in `desktop/`, and UI/client state in
+  `frontend/`.
+- For UI, page, component, layout, or production-level frontend refactors, read
+  `DESIGN.md` first and treat it as the visual/product-design contract. See
+  `agent-skills/design-system.md`.
+- For library/framework/API changes, first inspect the repo's actual installed
+  versions, then use Context7/current docs. See `agent-skills/ctx7.md`.
+- Prefer the Makefile commands below. Do not invent parallel setup scripts unless
+  the Makefile is missing a real workflow.
+- Do not push unless the user explicitly asks. If the user asks to push, verify
+  first and explain what remote automation will run.
+
+## Agent Skills
+
+Reusable repo-local skill notes live in `agent-skills/`.
+
+```
+agent-skills/
+  ctx7.md              Use current library/framework docs safely
+  design-system.md     Apply DESIGN.md to UI and product polish
+  frontend-quality.md  Frontend implementation and verification bar
+  release-ci.md        Desktop installer and GitHub Release workflow
+  repo-workflow.md     Branch, commit, merge, and verification flow
+```
+
+When a task matches one of these notes, read the relevant file before acting and
+follow it alongside this `AGENTS.md`.
+
 ## What this is
 
 A lab biorepository (sample bank) manager. A **FastAPI** backend serves a
@@ -15,7 +48,11 @@ docs/chat).
 ## Layout
 
 ```
-backend/            FastAPI app (Python 3.12)
+desktop/            Electron desktop shell (first-class app entry)
+  main.cjs          Spawns the backend sidecar and opens the renderer
+  build-dmg.sh      Local macOS packaging script
+  afterPack.cjs     Deep ad-hoc codesign after packing (stops "damaged" Gatekeeper error)
+backend/            FastAPI app / Electron sidecar (Python 3.12)
   app/
     main.py         App entry; mounts /api and serves frontend/dist
     routes.py       All HTTP routes
@@ -28,10 +65,7 @@ backend/            FastAPI app (Python 3.12)
     tools/          box_lookup, qc, aliquot, scan reconcilers
   tests/            pytest (uses data/sample_database.xlsx as a fixture)
   server.py         Headless uvicorn entry (the Electron sidecar)
-electron/           Electron desktop shell (main.cjs spawns the backend sidecar)
-  build-dmg.sh      Build the packaged .dmg (freezes backend + electron-builder)
-  afterPack.cjs     Deep ad-hoc codesign after packing (stops "damaged" Gatekeeper error)
-frontend/           Vite + React + TS + Tailwind, shadcn-style UI
+frontend/           Vite + React + TS + Tailwind renderer, shadcn-style UI
   src/components/    DataTable (client), DataTableView (server-paginated),
                      DataTableShell (shared header/rows/col-menu), ExportMenu,
                      WrongLocationTable, FilterPanel, Tour (in-app Guide), ui/*
@@ -47,14 +81,15 @@ Makefile            Common tasks — run `make`
 
 ## Commands
 
-Use the Makefile. `make install`, `make backend`, `make frontend` (or `make dev`
-for both), `make test`, `make lint`, `make build`, `make docker`. Desktop builds:
+Use the Makefile. `make install`, `make desktop`, `make backend`,
+`make frontend` (or `make dev` for browser/API dev), `make test`, `make lint`,
+`make build`, `make docker`. Desktop builds:
 `make dmg` (Apple Silicon), `make dmg-intel` (Intel/x64), `make dmg-all` (both).
 
 - Frontend dev runs on `:5173` and proxies `/api` to the backend on `:8000`.
 - **Always run `make lint`** (tsc + eslint) before considering frontend work done.
 - Backend tests take **~5 minutes** (the upload tests parse a 32MB / 266k-row
-  fixture). 56 tests; don't assume a quick run.
+  fixture). 58 tests; don't assume a quick run.
 
 ## Architecture notes
 
@@ -104,9 +139,11 @@ for both), `make test`, `make lint`, `make build`, `make docker`. Desktop builds
 
 ## Conventions
 
-- Match the surrounding code's style; semantic design tokens, Lucide icons (no
-  emoji), font pairing already set up.
-- Git: branch off `main`, commit, merge `--no-ff`, push. End commit messages with
+- Match the surrounding code's style and `DESIGN.md`; semantic design tokens,
+  Lucide icons (no emoji), font pairing already set up.
+- Git: branch off `main`, commit with a conventional message (`feat:`, `fix:`,
+  `refactor:`, `test:`, `ci:`, `docs:`), merge `--no-ff` when integrating, and
+  push only when explicitly requested. End commit messages with
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Verify before claiming done: `make lint`, relevant tests, and for UI changes
   check it in the browser.
@@ -127,12 +164,13 @@ for both), `make test`, `make lint`, `make build`, `make docker`. Desktop builds
   `render.yaml` Blueprint, set `DB_URL` to a Supabase Postgres connection string.
   Use the **Session pooler** string (IPv4; Render free can't reach Supabase's
   IPv6 direct connection) and ensure it starts with `postgresql://`.
-- **Desktop app.** Electron shell (`electron/`) + Python sidecar: `electron/main.cjs`
+- **Desktop app.** Electron shell (`desktop/`) + Python sidecar: `desktop/main.cjs`
   picks a free port, spawns `backend/server.py` (or the bundled `kolabs-backend`
   binary when packaged), waits for `/api/health`, then loads the SPA from it.
   Downloads are handled natively (`will-download` → ~/Downloads + reveal). Dev:
-  `make electron`. Package: `make dmg` (Apple Silicon), `make dmg-intel` (Intel),
-  or `make dmg-all` (both) → `electron/dist/*.dmg` (unsigned; freezes the backend
+  `make desktop` (`make electron` is a compatibility alias). Package: `make dmg`
+  (Apple Silicon), `make dmg-intel` (Intel), or `make dmg-all` (both) →
+  `desktop/dist/*.dmg` (unsigned; freezes the backend
   via PyInstaller then runs electron-builder). The x64 build runs under Rosetta
   and has the Python-version caveat noted in **Gotchas** — runtime-test it, don't
   just check the arch. DB lives in

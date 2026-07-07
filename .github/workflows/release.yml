@@ -93,9 +93,9 @@ jobs:
 
       # --- package the desktop app ---
       - run: npm ci
-        working-directory: electron
+        working-directory: desktop
       - name: Package
-        working-directory: electron
+        working-directory: desktop
         run: |
           for attempt in 1 2 3; do
             echo "Package attempt ${attempt}/3: ${{ matrix.pack }}"
@@ -120,13 +120,13 @@ jobs:
 
       - name: List installer artifacts
         run: |
-          find electron/dist -maxdepth 1 -type f \
+          find desktop/dist -maxdepth 1 -type f \
             \( -name '*.dmg' -o -name '*.exe' \) -print
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: electron/dist/${{ matrix.artifact_glob }}
+          path: desktop/dist/${{ matrix.artifact_glob }}
           if-no-files-found: error
           retention-days: 7
 
