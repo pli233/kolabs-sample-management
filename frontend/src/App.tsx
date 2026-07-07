@@ -73,7 +73,7 @@ function StatusFooter() {
 
   const primary =
     state.kind === 'loading'
-      ? 'Connecting…'
+      ? 'Connecting...'
       : state.kind === 'offline'
         ? 'Backend offline'
         : state.kind === 'none'
@@ -124,13 +124,14 @@ export function SidebarLayout() {
   const steps = tourFor(pathname)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Mobile top bar (below md) */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-[var(--midnight)] px-4 md:hidden">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-midnight px-4 md:hidden">
         <button
+          type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Open navigation menu"
-          className="grid h-9 w-9 place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
+          className="grid size-9 place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -148,7 +149,7 @@ export function SidebarLayout() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-56 flex-col gap-1 overflow-y-auto border-r border-border bg-[var(--midnight)] px-3 py-4 transition-transform md:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-56 flex-col gap-1 overflow-y-auto border-r border-border bg-midnight px-3 py-4 transition-transform md:translate-x-0',
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -158,9 +159,10 @@ export function SidebarLayout() {
             Sample Management
           </p>
           <button
+            type="button"
             onClick={() => setMenuOpen(false)}
             aria-label="Close navigation menu"
-            className="absolute right-0 top-0 grid h-8 w-8 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white md:hidden"
+            className="absolute right-0 top-0 grid size-8 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white md:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -196,9 +198,10 @@ export function SidebarLayout() {
       {/* Floating guide launcher (right edge) */}
       {steps.length > 0 && (
         <button
+          type="button"
           onClick={() => setTourOpen(true)}
           aria-label="Open guide"
-          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-lg transition-colors hover:border-primary hover:text-primary"
         >
           <PlayCircle className="h-5 w-5 text-primary" />
           Guide

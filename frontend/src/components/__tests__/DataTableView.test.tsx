@@ -9,7 +9,7 @@ vi.mock('@/lib/api', () => ({
   api: { getRows: (id: number, q: RowsQuery) => getRows(id, q) },
 }))
 
-// Glide renders to <canvas> (needs ResizeObserver) — stub it as header buttons
+// Glide renders to <canvas> (needs ResizeObserver), so stub it as header buttons
 // so we can still assert columns + header-click sort in jsdom.
 interface GlideStubCol {
   id: string

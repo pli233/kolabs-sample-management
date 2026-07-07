@@ -14,12 +14,12 @@ export const TOURS: Record<string, TourStep[]> = {
   '/dashboard': [
     {
       title: 'Active data feed',
-      body: 'The dashboard always reflects the active feed — the workbook you selected in Data Feeds.',
+      body: 'The dashboard always reflects the active feed, the workbook you selected in Data Feeds.',
       selector: '[data-tour="feed-title"]',
     },
     {
       title: 'Overview',
-      body: 'Totals and breakdowns across every row. The Projects and Freezers cards are clickable — open them to list each with its tube count.',
+      body: 'Totals and breakdowns across every row. The Projects and Freezers cards are clickable. Open them to list each with its tube count.',
       selector: '[data-tour="overview"]',
     },
     {
@@ -34,7 +34,7 @@ export const TOURS: Record<string, TourStep[]> = {
     },
     {
       title: 'Filter',
-      body: 'Build per-column conditions (contains, equals, >, is empty…) combined with Match all / any — applied across the whole dataset.',
+      body: 'Build per-column conditions (contains, equals, >, is empty...) combined with Match all / any, applied across the whole dataset.',
       selector: 'button[aria-label="Filter by column"]',
     },
     {
@@ -63,7 +63,7 @@ export const TOURS: Record<string, TourStep[]> = {
     },
     {
       title: 'Project & boxes',
-      body: 'Pick a project, then list boxes — ranges like 716-719,722 are supported.',
+      body: 'Pick a project, then list boxes. Ranges like 716-719,722 are supported.',
       selector: 'input[aria-label="Boxes"]',
     },
     {
@@ -90,12 +90,12 @@ export const TOURS: Record<string, TourStep[]> = {
     },
     {
       title: 'Paste project + ID pairs',
-      body: 'Paste two columns (project, project_id) from Excel — one pair per line. The project disambiguates IDs that repeat across projects. An ID without a decimal matches all aliquots of that person.',
+      body: 'Paste two columns (project, project_id) from Excel, one pair per line. The project disambiguates IDs that repeat across projects. An ID without a decimal matches all aliquots of that person.',
       selector: 'textarea[aria-label="Project and ID pairs"]',
     },
     {
       title: 'Preferred freezer',
-      body: 'Optional — bias the PRIMARY pick toward tubes in this freezer.',
+      body: 'Optional. Bias the PRIMARY pick toward tubes in this freezer.',
       selector: 'input[aria-label="Preferred freezer"]',
     },
     {
@@ -112,12 +112,12 @@ export const TOURS: Record<string, TourStep[]> = {
   '/scan-reconcile': [
     {
       title: 'Scan Reconcile',
-      body: 'Compare physical rack scans against the active feed by tube code — flags scanned tubes not in the feed and duplicate scans.',
+      body: 'Compare physical rack scans against the active feed by tube code. It flags scanned tubes not in the feed and duplicate scans.',
       selector: 'h1',
     },
     {
       title: 'Upload scan files',
-      body: 'Drag in or choose .csv / .xlsx / .xls — multiple files at once. Duplicate scan files are detected and dropped automatically.',
+      body: 'Drag in or choose .csv / .xlsx / .xls, multiple files at once. Duplicate scan files are detected and dropped automatically.',
       selector: '[data-tour="scan-dropzone"]',
     },
     {
@@ -134,7 +134,7 @@ export const TOURS: Record<string, TourStep[]> = {
     },
     {
       title: 'Manage feeds',
-      body: 'Switch the active feed with “Set active”, or remove one with the trash icon.',
+      body: 'Switch the active feed with "Set active", or remove one with the trash icon.',
       selector: '[data-tour="feed-list"]',
     },
   ],

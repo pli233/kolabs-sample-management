@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Dropzone } from '@/components/Dropzone'
 import { FeedList } from '@/components/FeedList'
 import { SheetPicker } from '@/components/SheetPicker'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InlineError } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
 import {
   api,
   type FileMeta,
@@ -20,6 +23,7 @@ export function DataFeedsPage() {
   // Multi-sheet uploads pause here to let the user pick the primary sheet.
   const [pending, setPending] = useState<UploadResult | null>(null)
   const [savingPrimary, setSavingPrimary] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<FileMeta | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -95,12 +99,10 @@ export function DataFeedsPage() {
   }
 
   async function deleteFeed(id: number) {
-    const feed = files.find((f) => f.id === id)
-    if (!window.confirm(`Delete "${feed?.original_filename}"? This cannot be undone.`))
-      return
     setError(null)
     try {
       await api.deleteFeed(id)
+      setDeleteTarget(null)
       await refresh()
     } catch (e) {
       setError((e as Error).message)
@@ -108,25 +110,29 @@ export function DataFeedsPage() {
   }
 
   return (
-    <div className="space-y-10">
-      <section className="space-y-4">
-        <div>
-          <h1 className="font-title text-2xl font-semibold text-foreground">
-            Data Feeds
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload an Excel/CSV source. The newest upload becomes the active feed.
-          </p>
-        </div>
+    <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Data Feeds"
+          description="Upload an Excel/CSV source. The newest upload becomes the active feed."
+          meta={
+            <>
+              <span className="text-xs text-muted-foreground">
+                {files.length.toLocaleString()} feed{files.length === 1 ? '' : 's'}
+              </span>
+              {activeId !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Active feed #{activeId}
+                </span>
+              )}
+            </>
+          }
+        />
         <Dropzone onFile={handleFile} disabled={uploading} progress={progress} />
-        {error && (
-          <p className="text-sm text-[var(--destructive)]" role="alert">
-            {error}
-          </p>
-        )}
+        {error && <InlineError message={error} />}
       </section>
 
-      <section className="space-y-3" data-tour="feed-list">
+      <section className="flex flex-col gap-3" data-tour="feed-list">
         <h2 className="font-title text-lg font-semibold text-foreground">
           All feeds
         </h2>
@@ -134,7 +140,9 @@ export function DataFeedsPage() {
           files={files}
           activeId={activeId}
           onSetActive={setActive}
-          onDelete={deleteFeed}
+          onDelete={(id) =>
+            setDeleteTarget(files.find((file) => file.id === id) ?? null)
+          }
         />
       </section>
 
@@ -145,6 +153,17 @@ export function DataFeedsPage() {
           defaultPrimary={pending.primary_sheet}
           onConfirm={confirmPrimary}
           busy={savingPrimary}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          destructive
+          title="Delete data feed"
+          description={`Delete "${deleteTarget.original_filename}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => void deleteFeed(deleteTarget.id)}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </div>

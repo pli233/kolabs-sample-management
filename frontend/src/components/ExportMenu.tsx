@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useEscapeKey } from '@/lib/interactions'
 
 const ITEMS: { fmt: 'xlsx' | 'csv'; label: string }[] = [
   { fmt: 'xlsx', label: 'Excel (.xlsx)' },
@@ -23,6 +24,7 @@ export function ExportMenu({
   label?: string
 }) {
   const [open, setOpen] = useState(false)
+  useEscapeKey(open, () => setOpen(false))
   const itemClass =
     'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted'
 
@@ -31,6 +33,7 @@ export function ExportMenu({
       <Button
         variant="outline"
         size="sm"
+        type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={label}
       >
@@ -40,7 +43,7 @@ export function ExportMenu({
       </Button>
       {open && (
         <>
-          <button
+          <div
             className="fixed inset-0 z-20 cursor-default"
             aria-hidden
             onClick={() => setOpen(false)}

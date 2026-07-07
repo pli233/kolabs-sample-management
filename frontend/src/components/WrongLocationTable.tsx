@@ -3,9 +3,11 @@ import { Check, Undo2 } from 'lucide-react'
 import { api, type Cell, type ScanRow } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { TableSurface } from '@/components/DataTableShell'
 
 const show = (v: Cell) =>
-  v === null || v === undefined || v === '' ? '—' : String(v)
+  v === null || v === undefined || v === '' ? '-' : String(v)
 
 // Keys already rendered as dedicated comparison columns; the rest of each
 // record's fields are appended so the full sample record is visible.
@@ -22,8 +24,8 @@ type Status = 'busy' | 'done' | 'error'
 
 /**
  * Wrong-location rows with the DB position (red) vs scanned position (blue).
- * "Apply to DB" writes the scanned location into the active feed; "Apply all"
- * does every row in one go; "Revoke" restores a row to its database location.
+ * "Apply to DB" writes the scanned location into the active feed. "Apply all"
+ * does every row in one go. "Revoke" restores a row to its database location.
  */
 export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
   const [state, setState] = useState<Record<number, Status>>({})
@@ -92,12 +94,12 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
   const appliedCount = Object.values(state).filter((s) => s === 'done').length
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-red-700">Red</span> = current database
-          location · <span className="font-medium text-blue-700">Blue</span> =
-          scanned (physical) location.
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="destructive">DB location</Badge>
+          <Badge variant="info">Scanned location</Badge>
+          <span>Apply writes the scanned location to the active feed.</span>
         </p>
         <Button
           size="sm"
@@ -105,22 +107,22 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
           disabled={applyingAll || appliedCount === rows.length}
         >
           {applyingAll
-            ? 'Applying…'
+            ? 'Applying...'
             : appliedCount === rows.length
               ? 'All applied'
               : `Apply all (${rows.length})`}
         </Button>
       </div>
-      <div className="overflow-auto rounded-lg border border-border bg-card">
+      <TableSurface className="overflow-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0">
             <tr className="border-b border-border bg-muted text-left text-xs font-semibold text-foreground">
               <th className="px-3 py-2">Tube code</th>
               <th className="px-3 py-2">Project</th>
-              <th className="bg-red-50 px-3 py-2 text-red-700">DB box</th>
-              <th className="bg-red-50 px-3 py-2 text-red-700">DB position</th>
-              <th className="bg-blue-50 px-3 py-2 text-blue-700">Scanned box</th>
-              <th className="bg-blue-50 px-3 py-2 text-blue-700">
+              <th className="bg-destructive-soft px-3 py-2 text-destructive">DB box</th>
+              <th className="bg-destructive-soft px-3 py-2 text-destructive">DB position</th>
+              <th className="bg-primary-subtle px-3 py-2 text-primary">Scanned box</th>
+              <th className="bg-primary-subtle px-3 py-2 text-primary">
                 Scanned position
               </th>
               {extraCols.map((c) => (
@@ -143,22 +145,22 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
               return (
                 <tr
                   key={i}
-                  className={done ? 'bg-green-50' : 'border-t border-border/60'}
+                  className={done ? 'bg-success-soft' : 'border-t border-border/60'}
                 >
                   <td className="px-3 py-1.5 font-mono">{show(r.tube_code)}</td>
                   <td className="px-3 py-1.5">{show(r.project)}</td>
-                  <td className="bg-red-50/60 px-3 py-1.5 text-red-700">
+                  <td className="bg-destructive-soft/60 px-3 py-1.5 text-destructive">
                     {show(r.expected_box)}
                   </td>
                   <td
-                    className={`bg-red-50/60 px-3 py-1.5 text-red-700 ${done ? 'line-through opacity-60' : ''}`}
+                    className={`bg-destructive-soft/60 px-3 py-1.5 text-destructive ${done ? 'line-through opacity-60' : ''}`}
                   >
                     {show(r.expected_position)}
                   </td>
-                  <td className="bg-blue-50/60 px-3 py-1.5 text-blue-700">
+                  <td className="bg-primary-subtle/70 px-3 py-1.5 text-primary">
                     {show(r.box)}
                   </td>
-                  <td className="bg-blue-50/60 px-3 py-1.5 font-medium text-blue-700">
+                  <td className="bg-primary-subtle/70 px-3 py-1.5 font-medium text-primary">
                     {show(r.position)}
                   </td>
                   {extraCols.map((c) => (
@@ -172,14 +174,14 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
                   <td
                     className={cn(
                       'sticky right-0 px-3 py-1.5 text-right',
-                      done ? 'bg-green-50' : 'bg-card'
+                      done ? 'bg-success-soft' : 'bg-card'
                     )}
                   >
                     {done ? (
                       <span className="inline-flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                        <Badge variant="success">
                           <Check className="h-3.5 w-3.5" /> Applied
-                        </span>
+                        </Badge>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -197,7 +199,7 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
                         onClick={() => apply(i, r)}
                       >
                         {st === 'busy'
-                          ? 'Applying…'
+                          ? 'Applying...'
                           : st === 'error'
                             ? 'Retry'
                             : 'Apply to DB'}
@@ -209,7 +211,7 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
             })}
           </tbody>
         </table>
-      </div>
+      </TableSurface>
     </div>
   )
 }

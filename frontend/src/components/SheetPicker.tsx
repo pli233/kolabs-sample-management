@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { SheetChoice } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { MATCH_BADGE } from '@/lib/match'
 import { cn } from '@/lib/utils'
 
@@ -28,18 +29,18 @@ export function SheetPicker({
   const [selected, setSelected] = useState(defaultPrimary)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-midnight/50 p-4">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-xl">
         <h2 className="font-title text-lg font-semibold text-foreground">
           Choose the primary sheet
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filename}</span> has
-          multiple sheets. Pick the one to use as the data source — only this sheet
+          multiple sheets. Pick the one to use as the data source. Only this sheet
           is shown and validated.
         </p>
 
-        <ul className="mt-4 max-h-[50vh] space-y-2 overflow-auto">
+        <ul className="mt-4 flex max-h-[50vh] flex-col gap-2 overflow-auto">
           {sheets.map((s) => {
             const active = s.name === selected
             const badge = MATCH_BADGE[s.match]
@@ -51,7 +52,7 @@ export function SheetPicker({
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
                     active
-                      ? 'border-primary bg-[#eaf6fd]'
+                      ? 'border-primary bg-primary-subtle'
                       : 'border-border hover:bg-muted'
                   )}
                 >
@@ -70,14 +71,10 @@ export function SheetPicker({
                       {s.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {s.rowCount.toLocaleString()} rows · {s.columnCount} cols
+                      {s.rowCount.toLocaleString()} rows / {s.columnCount} cols
                     </span>
                   </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-                  >
-                    {badge.label}
-                  </span>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
                 </button>
               </li>
             )
@@ -86,7 +83,7 @@ export function SheetPicker({
 
         <div className="mt-6 flex justify-end">
           <Button onClick={() => onConfirm(selected)} disabled={busy || !selected}>
-            {busy ? 'Working…' : 'Confirm'}
+            {busy ? 'Working...' : 'Confirm'}
           </Button>
         </div>
       </div>

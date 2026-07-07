@@ -5,8 +5,11 @@ import { api, type FileMeta, type Overview } from '@/lib/api'
 import { DataTableView } from '@/components/DataTableView'
 import { OverviewCharts } from '@/components/OverviewCharts'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState, InlineError, ResultsSkeleton } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
 import { fileStatusBadge } from '@/lib/match'
-import { feedName } from '@/lib/utils'
+import { feedName, formatBytes, relativeTime } from '@/lib/utils'
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -35,60 +38,46 @@ export function DashboardPage() {
   }, [])
 
   if (error) {
-    return (
-      <p className="text-sm text-[var(--destructive)]" role="alert">
-        {error}
-      </p>
-    )
+    return <InlineError message={error} />
   }
 
   if (active === undefined) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>
+    return <ResultsSkeleton />
   }
 
   if (active === null) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-muted px-6 py-20 text-center">
-        <Database className="h-10 w-10 text-muted-foreground" />
-        <div>
-          <h1 className="font-title text-lg font-semibold text-foreground">
-            No active data feed
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload a file or pick one in Data Feeds to get started.
-          </p>
-        </div>
-        <Button onClick={() => navigate('/feeds')}>Go to Data Feeds</Button>
-      </div>
+      <EmptyState
+        icon={Database}
+        title="No active data feed"
+        description="Upload a file or pick one in Data Feeds to get started."
+        action={<Button onClick={() => navigate('/feeds')}>Go to Data Feeds</Button>}
+        className="py-20"
+      />
     )
   }
 
   const badge = fileStatusBadge(active.validation_status)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Active feed
-        </p>
-        <div className="mt-1 flex items-center gap-3" data-tour="feed-title">
-          <h1
-            className="truncate font-title text-xl font-semibold text-foreground"
-            title={active.original_filename}
-          >
-            {feedName(active.original_filename)}
-          </h1>
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-          >
-            {badge.label}
-          </span>
-        </div>
-        {active.primary_sheet && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            sheet “{active.primary_sheet}”
-          </p>
-        )}
+    <div className="flex flex-col gap-6">
+      <div data-tour="feed-title">
+        <PageHeader
+          eyebrow="Active feed"
+          title={feedName(active.original_filename)}
+          description={active.primary_sheet ? `sheet "${active.primary_sheet}"` : undefined}
+          actions={<Badge variant={badge.variant}>{badge.label}</Badge>}
+          meta={
+            <>
+              <Badge variant="outline">{active.sheet_count} sheets</Badge>
+              <Badge variant="outline">{formatBytes(active.size)}</Badge>
+              <Badge variant="neutral">Uploaded {relativeTime(active.uploaded_at)}</Badge>
+              <Button variant="outline" size="sm" onClick={() => navigate('/feeds')}>
+                Manage feeds
+              </Button>
+            </>
+          }
+        />
       </div>
 
       {overview && (

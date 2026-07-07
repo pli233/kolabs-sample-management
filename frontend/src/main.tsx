@@ -34,7 +34,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Suspense
-        fallback={<p className="p-8 text-sm text-muted-foreground">Loading…</p>}
+        fallback={<p className="p-8 text-sm text-muted-foreground">Loading...</p>}
       >
         <Routes>
           <Route element={<SidebarLayout />}>

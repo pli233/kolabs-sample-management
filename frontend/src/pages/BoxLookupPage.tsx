@@ -4,10 +4,22 @@ import { api, type BoxLookupResult, type Cell } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { EmptyState, InlineError } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
+import { TableSurface } from '@/components/DataTableShell'
 import { ExportMenu } from '@/components/ExportMenu'
 
 function show(v: Cell): string {
-  if (v === null || v === undefined || v === '') return '—'
+  if (v === null || v === undefined || v === '') return '-'
   return String(v)
 }
 
@@ -36,17 +48,16 @@ export function BoxLookupPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-title text-2xl font-semibold text-foreground">
-          Box Lookup
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Find every location a box number appears in, with tube counts.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Box Lookup"
+        description="Find every location a box number appears in, with tube counts."
+      />
 
-      <form onSubmit={run} className="flex items-center gap-2">
+      <form
+        onSubmit={run}
+        className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3"
+      >
         <div className="w-60">
           <Input
             icon={<Search className="h-4 w-4" />}
@@ -57,44 +68,40 @@ export function BoxLookupPage() {
           />
         </div>
         <Button type="submit" disabled={loading || !box.trim()}>
-          {loading ? 'Searching…' : 'Look up'}
+          {loading ? 'Searching...' : 'Look up'}
         </Button>
         {result && result.locations.length > 0 && (
           <ExportMenu urlFor={(fmt) => api.boxLookupExportUrl(result.box, fmt)} />
         )}
       </form>
 
-      {error && (
-        <p className="text-sm text-[var(--destructive)]" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <InlineError message={error} />}
 
       {!result && !error && !loading && (
-        <p className="rounded-lg border border-dashed border-border bg-muted px-4 py-10 text-center text-sm text-muted-foreground">
-          Enter a box number to see its tubes.
-        </p>
+        <EmptyState
+          icon={Search}
+          title="Enter a box number"
+          description="Search the active feed to see every matching tube location."
+        />
       )}
 
       {result && (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             Box <span className="font-medium text-foreground">{result.box}</span>{' '}
-            — {result.locations.length} location
+            - {result.locations.length} location
             {result.locations.length === 1 ? '' : 's'}
           </p>
 
           {result.locations.length === 0 && (
-            <p className="rounded-lg border border-dashed border-border bg-muted px-4 py-10 text-center text-sm text-muted-foreground">
-              No tubes found for box {result.box} in the active feed.
-            </p>
+            <EmptyState
+              title={`No tubes found for box ${result.box}`}
+              description="The active feed returned no matching locations."
+            />
           )}
 
           {result.locations.map((loc, i) => (
-            <div
-              key={i}
-              className="overflow-hidden rounded-lg border border-border bg-card"
-            >
+            <TableSurface key={i}>
               <div className="flex flex-wrap items-center justify-center gap-3 border-b border-border bg-muted px-4 py-2.5">
                 {result.locationColumns
                   .filter((c) => {
@@ -114,33 +121,29 @@ export function BoxLookupPage() {
                       </span>
                     </span>
                   ))}
-                <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-primary">
+                <Badge variant="info">
                   {loc.count} tube{loc.count === 1 ? '' : 's'}
-                </span>
+                </Badge>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted-foreground">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-t-0">
                     {result.exampleColumns.map((c) => (
-                      <th key={c} className="px-4 py-1.5 font-medium">
-                        {c}
-                      </th>
+                      <TableHead key={c}>{c}</TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {loc.examples.map((ex, j) => (
-                    <tr key={j} className="border-t border-border/60">
+                    <TableRow key={j}>
                       {result.exampleColumns.map((c) => (
-                        <td key={c} className="px-4 py-1.5 text-foreground">
-                          {show(ex[c])}
-                        </td>
+                        <TableCell key={c}>{show(ex[c])}</TableCell>
                       ))}
-                    </tr>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </TableSurface>
           ))}
         </div>
       )}

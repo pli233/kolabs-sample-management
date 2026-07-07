@@ -1,9 +1,15 @@
 import { useState } from 'react'
+import { TestTube2 } from 'lucide-react'
 import { api, type AliquotParams, type ToolTable } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { GlideTable } from '@/components/GlideTable'
+import { EmptyState, InlineError, ResultsSkeleton } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
+import { GLIDE_COLORS } from '@/lib/glideTheme'
 
 // The pick summary plus where to grab the tube; per-tube detail columns
 // (project, rack, drawer, box_pos, aliquot, cryobank, track_id, record_id)
@@ -66,26 +72,29 @@ export function AliquotFinderPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-title text-2xl font-semibold text-foreground">
-          Aliquot Finder
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Aliquot Finder"
+        description={
+          <>
           A PRIMARY tube plus BACKUP tubes per ID. Paste two columns (project,
-          project_id) straight from Excel — one pair per line. An ID without a
-          decimal matches all of that person’s aliquots.
-        </p>
-      </div>
+          project_id) straight from Excel, one pair per line. An ID without a
+          decimal matches all of that person's aliquots.
+          </>
+        }
+      />
 
-      <form onSubmit={run} className="space-y-3">
-        <textarea
+      <form
+        onSubmit={run}
+        className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3"
+      >
+        <Textarea
           value={ids}
           onChange={(e) => setIds(e.target.value)}
-          placeholder="Paste two Excel columns — one pair per line&#10;e.g.&#10;L37&#9;425280.01&#10;L40&#9;416180"
+          placeholder={'Paste two Excel columns, one pair per line\ne.g.\nL37\t425280.01\nL40\t416180'}
           aria-label="Project and ID pairs"
           rows={3}
-          className="w-full max-w-2xl rounded-md border border-border bg-card px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          className="w-full max-w-2xl font-mono"
         />
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -110,7 +119,7 @@ export function AliquotFinderPage() {
             />
           </label>
           <Button type="submit" disabled={loading || !ids.trim()}>
-            {loading ? 'Finding…' : 'Find'}
+            {loading ? 'Finding...' : 'Find'}
           </Button>
           {!ids.trim() && (
             <span className="self-center text-xs text-muted-foreground">
@@ -121,36 +130,29 @@ export function AliquotFinderPage() {
       </form>
 
       {error && (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-3 py-2"
-        >
-          <span className="text-sm text-[var(--destructive)]">{error}</span>
-          <span className="text-xs text-muted-foreground">
-            Check your IDs and that a feed is active, then try again.
-          </span>
-          <Button type="button" variant="outline" size="sm" onClick={() => void execute()}>
-            Retry
-          </Button>
-        </div>
+        <InlineError
+          message={error}
+          detail="Check your IDs and that a feed is active, then try again."
+          retry={() => void execute()}
+        />
       )}
 
-      {loading && (
-        <div data-testid="results-loading" aria-hidden="true" className="space-y-2">
-          <div className="h-8 w-full max-w-md animate-pulse rounded bg-muted motion-reduce:animate-none" />
-          <div className="h-64 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
-        </div>
+      {loading && <ResultsSkeleton data-testid="results-loading" />}
+
+      {!result && !loading && !error && (
+        <EmptyState
+          icon={TestTube2}
+          title="Find aliquots"
+          description="Paste project and ID pairs to rank primary and backup tubes from the active feed."
+        />
       )}
 
       {result && !loading && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {!freshRun && (
-            <span
-              role="status"
-              className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
-            >
+            <Badge role="status" variant="neutral" className="self-start">
               Showing your last run
-            </span>
+            </Badge>
           )}
           <GlideTable
             columns={result.columns}
@@ -161,7 +163,9 @@ export function AliquotFinderPage() {
             pickExtras={['new_box', 'new_position']}
             rowTint={(row) => {
               const ci = result.columns.indexOf('choice')
-              return ci >= 0 && row[ci] === 'PRIMARY' ? '#bae6fd' : undefined
+              return ci >= 0 && row[ci] === 'PRIMARY'
+                ? GLIDE_COLORS.primarySoft
+                : undefined
             }}
           />
         </div>

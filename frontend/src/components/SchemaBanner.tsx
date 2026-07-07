@@ -32,7 +32,7 @@ export function SchemaBanner({ sheet }: { sheet: SchemaInfo }) {
 
   // partial: resembles the main library but has column problems.
   return (
-    <Alert variant="warning" className="space-y-1">
+    <Alert variant="warning" className="flex flex-col gap-1">
       <div className="font-medium">
         Close to the schema, but these columns differ (data still shown):
       </div>

@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone'
 import { Loader2, UploadCloud } from 'lucide-react'
 import type { UploadProgress } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { Alert } from '@/components/ui/alert'
 
 const ACCEPT = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -49,8 +50,8 @@ export function Dropzone({ onFile, disabled, progress }: DropzoneProps) {
         className={cn(
           'flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-16 text-center transition-colors',
           isDragActive
-            ? 'border-primary bg-[#eaf6fd]'
-            : 'border-border bg-muted hover:border-primary hover:bg-[#eaf6fd]/40',
+            ? 'border-primary bg-primary-subtle'
+            : 'border-border bg-muted/50 hover:border-primary hover:bg-primary-subtle/70',
           disabled && 'pointer-events-none opacity-60'
         )}
       >
@@ -61,18 +62,18 @@ export function Dropzone({ onFile, disabled, progress }: DropzoneProps) {
           <>
             <UploadCloud className="h-10 w-10 text-primary" />
             <div className="font-title text-base font-semibold text-foreground">
-              {disabled ? 'Uploading…' : 'Drag a file here, or click to choose'}
+              {disabled ? 'Uploading...' : 'Drag a file here, or click to choose'}
             </div>
             <div className="text-sm text-muted-foreground">
-              .xlsx / .xls / .csv · up to 50 MB
+              .xlsx / .xls / .csv, up to 50 MB
             </div>
           </>
         )}
       </div>
       {error && (
-        <p className="mt-2 text-sm text-[var(--destructive)]" role="alert">
+        <Alert variant="destructive" className="mt-2">
           {error}
-        </p>
+        </Alert>
       )}
     </div>
   )
@@ -82,9 +83,9 @@ function UploadProgressView({ progress }: { progress: UploadProgress }) {
   const processing = progress.phase === 'processing'
   const uploadPct = processing ? 100 : Math.round((progress.pct ?? 0) * 100)
   return (
-    <div className="w-full max-w-md space-y-4">
+    <div className="flex w-full max-w-md flex-col gap-4">
       {/* Step 1: file transfer (determinate) */}
-      <div className="space-y-1.5 text-left">
+      <div className="flex flex-col gap-1.5 text-left">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-foreground">
             {processing ? 'Upload complete' : 'Uploading file'}
@@ -100,7 +101,7 @@ function UploadProgressView({ progress }: { progress: UploadProgress }) {
       </div>
 
       {/* Step 2: server-side parsing (indeterminate, starts after upload) */}
-      <div className="space-y-1.5 text-left">
+      <div className="flex flex-col gap-1.5 text-left">
         <div className="flex items-center gap-1.5 text-sm">
           {processing && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
           <span
@@ -108,7 +109,7 @@ function UploadProgressView({ progress }: { progress: UploadProgress }) {
               processing ? 'font-medium text-foreground' : 'text-muted-foreground'
             }
           >
-            Processing data…
+            Processing data...
           </span>
         </div>
         <div className="relative h-2 overflow-hidden rounded-full bg-border">

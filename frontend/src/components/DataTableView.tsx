@@ -17,7 +17,7 @@ import {
   type Rectangle,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
-import { Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   api,
   type Cell,
@@ -28,10 +28,18 @@ import {
 import { SchemaBanner } from '@/components/SchemaBanner'
 import { FilterPanel } from '@/components/FilterPanel'
 import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
-import { ColumnMenu } from '@/components/DataTableShell'
+import {
+  ColumnMenu,
+  TableEmpty,
+  TableSurface,
+  TableToolbar,
+  ToolbarSearch,
+} from '@/components/DataTableShell'
 import { ExportMenu } from '@/components/ExportMenu'
 import { GLIDE_THEME } from '@/lib/glideTheme'
 import { DEFAULT_VISIBLE, renderCell } from '@/lib/table'
+import { Badge } from '@/components/ui/badge'
+import { InlineError, ResultsSkeleton } from '@/components/Feedback'
 
 const PAGE_SIZE = 200
 
@@ -162,6 +170,8 @@ export function DataTableView({ fileId }: { fileId: number }) {
     [meta]
   )
 
+  // TanStack Table returns imperative helpers; this is an intentional React Compiler skip.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: EMPTY_DATA,
     columns,
@@ -187,14 +197,10 @@ export function DataTableView({ fileId }: { fileId: number }) {
   )
 
   if (error) {
-    return (
-      <p className="text-sm text-[var(--destructive)]" role="alert">
-        {error}
-      </p>
-    )
+    return <InlineError message={error} />
   }
   if (!meta) {
-    return <p className="text-sm text-muted-foreground">Loading data…</p>
+    return <ResultsSkeleton />
   }
 
   function toggleSort(colId: string) {
@@ -241,31 +247,18 @@ export function DataTableView({ fileId }: { fileId: number }) {
   )
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <SchemaBanner sheet={meta} />
 
       {/* Toolbar: global search + column menu + per-column filters + counts */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="relative w-56 max-w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search all rows…"
-              aria-label="Search all rows"
-              className="h-8 w-full rounded-md border border-border bg-card pl-9 pr-8 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+      <TableToolbar>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <ToolbarSearch
+            value={q}
+            onChange={setQ}
+            placeholder="Search all rows..."
+            ariaLabel="Search all rows"
+          />
           <ColumnMenu table={table} defaultVisible={DEFAULT_VISIBLE} />
 
           {/* Per-column structured filters */}
@@ -278,15 +271,15 @@ export function DataTableView({ fileId }: { fileId: number }) {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">
             {(activeFilters.length > 0 || qDebounced) &&
               `${filtered.toLocaleString()} of `}
-            {total.toLocaleString()} rows · {visibleCount} cols
+            {total.toLocaleString()} rows / {visibleCount} cols
           </span>
           <ExportMenu urlFor={exportUrlFor} />
         </div>
-      </div>
+      </TableToolbar>
 
       {/* Active filter chips */}
       {activeFilters.length > 0 && (
@@ -296,9 +289,10 @@ export function DataTableView({ fileId }: { fileId: number }) {
           </span>
           {conditions.map((c, i) =>
             isActive(c) ? (
-              <span
+              <Badge
                 key={i}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground"
+                variant="outline"
+                className="gap-1"
               >
                 <span className="font-medium">{c.column}</span>
                 <span className="text-muted-foreground">
@@ -306,26 +300,25 @@ export function DataTableView({ fileId }: { fileId: number }) {
                 </span>
                 {opNeedsValue(c.op) && <span>{c.value}</span>}
                 <button
+                  type="button"
                   onClick={() =>
                     setConditions(conditions.filter((_, idx) => idx !== i))
                   }
                   aria-label="Remove filter"
-                  className="rounded-full text-muted-foreground hover:text-[var(--destructive)]"
+                  className="rounded-full text-muted-foreground hover:text-destructive"
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </span>
+              </Badge>
             ) : null
           )}
         </div>
       )}
 
       {filtered === 0 ? (
-        <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-          No rows match the current filters
-        </div>
+        <TableEmpty>No rows match the current filters</TableEmpty>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <TableSurface>
           <DataEditor
             ref={gridRef}
             theme={GLIDE_THEME}
@@ -345,7 +338,7 @@ export function DataTableView({ fileId }: { fileId: number }) {
             width="100%"
             height={gridHeight}
           />
-        </div>
+        </TableSurface>
       )}
     </div>
   )

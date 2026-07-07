@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils'
 import { formatPosition, rowToLetters } from '@/lib/position'
 
 /** Visual plate/box grid. Each well shows its Sample_Info label and is editable
- *  inline — clicking a well writes back through `onCellChange`, which is the
- *  "Plate → Data" direction (the data table is the same underlying map). */
+ *  inline. Clicking a well writes back through `onCellChange`, which is the
+ *  "Plate to Data" direction (the data table is the same underlying map). */
 export function PlateGrid({
   rows,
   cols,
@@ -19,11 +19,11 @@ export function PlateGrid({
   const [editing, setEditing] = useState<string | null>(null)
 
   return (
-    <div className="max-w-full overflow-auto rounded-lg border border-border bg-card p-2">
+    <div className="w-full min-w-0 overflow-auto rounded-lg border border-border bg-card p-2">
       <div
         className="grid gap-1"
         style={{
-          gridTemplateColumns: `2rem repeat(${cols}, 3.75rem)`,
+          gridTemplateColumns: `2rem repeat(${cols}, 3.25rem)`,
         }}
       >
         {/* header row: blank corner + column numbers */}
@@ -80,12 +80,12 @@ function RowCells({
         return (
           <div
             key={pos}
-            title={`${pos}${label ? ` — ${label}` : ''}`}
+            title={`${pos}${label ? ` - ${label}` : ''}`}
             onClick={() => setEditing(pos)}
             className={cn(
               'flex h-12 cursor-text items-center justify-center rounded border px-1 text-center text-[10px] leading-tight',
               label
-                ? 'border-primary/40 bg-primary/10 text-foreground'
+                ? 'border-primary/40 bg-primary-subtle text-foreground'
                 : 'border-border bg-muted/40 text-muted-foreground'
             )}
           >

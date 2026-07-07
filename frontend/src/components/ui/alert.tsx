@@ -7,9 +7,9 @@ interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const variantStyles: Record<NonNullable<AlertProps['variant']>, string> = {
   warning:
-    'border-[#f3d27a] bg-[var(--warning)] text-[var(--warning-foreground)]',
-  info: 'border-border bg-muted text-foreground',
-  destructive: 'border-[#f4b4bc] bg-[#fdecee] text-[var(--destructive)]',
+    'border-warning-border bg-warning text-warning-foreground',
+  info: 'border-info-border bg-info-soft text-foreground',
+  destructive: 'border-destructive-border bg-destructive-soft text-destructive',
 }
 
 export function Alert({

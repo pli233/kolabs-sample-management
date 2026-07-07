@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const base =
-  'h-9 rounded-md border border-border bg-card text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-muted disabled:text-muted-foreground'
+  'h-9 rounded-md border border-input bg-card text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-muted disabled:text-muted-foreground'
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Optional leading icon; pads the input and renders the glyph on the left. */

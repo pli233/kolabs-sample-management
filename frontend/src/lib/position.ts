@@ -30,8 +30,8 @@ export function formatPosition(rowIdx: number, colIdx: number): string {
 }
 
 /** Parse a free-form position ("A01", "A1", "b3") into row/col. Returns null if
- *  it isn't <letters><digits>. Does NOT range-check against grid dimensions —
- *  callers validate `row`/`col` against the current rows×cols themselves. */
+ *  it isn't <letters><digits>. Does NOT range-check against grid dimensions.
+ *  Callers validate `row`/`col` against the current rows x cols themselves. */
 export function parsePosition(input: string): Pos | null {
   const m = input.trim().toUpperCase().match(/^([A-Z]+)0*(\d+)$/)
   if (!m) return null

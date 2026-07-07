@@ -1,42 +1,94 @@
-/* Design tokens derived from kolaboratory.com (Webflow brand).
-   See docs/superpowers/specs §7. */
+/* Design tokens derived from kolaboratory.com (Webflow brand). */
 :root {
   /* Neutrals */
   --neutral-100: #ffffff;
+  --neutral-100-rgb: 255 255 255;
   --neutral-200: #f9fafb;
+  --neutral-200-rgb: 249 250 251;
   --neutral-300: #f2f4f7;
+  --neutral-300-rgb: 242 244 247;
   --neutral-400: #d4dce3;
+  --neutral-400-rgb: 212 220 227;
   --neutral-500: #999fb2;
+  --neutral-500-rgb: 153 159 178;
   --neutral-600: #4e5561;
+  --neutral-600-rgb: 78 85 97;
   --neutral-700: #303643;
+  --neutral-700-rgb: 48 54 67;
   --neutral-900: #060f1c;
+  --neutral-900-rgb: 6 15 28;
 
   /* Brand */
   --brand-sky: #0e8ed6;
+  --brand-sky-rgb: 14 142 214;
   --brand-cobalt: #0112b8;
+  --brand-cobalt-rgb: 1 18 184;
   --brand-midnight: #010b24;
+  --brand-midnight-rgb: 1 11 36;
 
   /* Semantic (shadcn-style) */
   --background: var(--neutral-100);
+  --background-rgb: var(--neutral-100-rgb);
   --foreground: var(--neutral-900);
+  --foreground-rgb: var(--neutral-900-rgb);
   --card: var(--neutral-100);
+  --card-rgb: var(--neutral-100-rgb);
   --muted: var(--neutral-300);
+  --muted-rgb: var(--neutral-300-rgb);
   --muted-foreground: var(--neutral-600);
+  --muted-foreground-rgb: var(--neutral-600-rgb);
   --border: var(--neutral-400);
+  --border-rgb: var(--neutral-400-rgb);
   --input: var(--neutral-400);
-  /* brand-sky (#0e8ed6) is only 3.6:1 with white text — fails AA for label text.
+  --input-rgb: var(--neutral-400-rgb);
+  /* brand-sky (#0e8ed6) is only 3.6:1 with white text, failing AA for label text.
      Use --brand-sky directly for large/icon accents; --primary for text surfaces. */
-  --primary: #0b76b0;              /* 4.95:1 on white — AA for button/nav label text */
+  --primary: #0b76b0;              /* 4.95:1 on white, AA for button/nav label text */
+  --primary-rgb: 11 118 176;
   --primary-foreground: #ffffff;
+  --primary-foreground-rgb: 255 255 255;
   --primary-hover: #095f8e;        /* darker still for hover */
+  --primary-hover-rgb: 9 95 142;
+  --primary-active: #064b70;
+  --primary-active-rgb: 6 75 112;
+  --primary-soft: #e0f2fe;
+  --primary-soft-rgb: 224 242 254;
+  --primary-subtle: #eff8ff;
+  --primary-subtle-rgb: 239 248 255;
   --accent: var(--neutral-300);
+  --accent-rgb: var(--neutral-300-rgb);
   --accent-foreground: var(--neutral-900);
-  --destructive: #ea384c;
+  --accent-foreground-rgb: var(--neutral-900-rgb);
+  --destructive: #b42335;
+  --destructive-rgb: 180 35 53;
+  --destructive-soft: #fef2f2;
+  --destructive-soft-rgb: 254 242 242;
+  --destructive-border: #f3b7bf;
+  --destructive-border-rgb: 243 183 191;
   --warning: #fff7e6;
+  --warning-rgb: 255 247 230;
   --warning-foreground: #92610a;
+  --warning-foreground-rgb: 146 97 10;
   --warning-solid: #d97706;        /* amber for badges/dots, not just bg */
-  --success: #1f9d57;              /* WCAG AA on white */
+  --warning-solid-rgb: 217 119 6;
+  --warning-border: #f5d48a;
+  --warning-border-rgb: 245 212 138;
+  --success: #127a48;              /* AA on white and on --success-soft */
+  --success-rgb: 18 122 72;
   --success-foreground: #ffffff;
+  --success-foreground-rgb: 255 255 255;
+  --success-soft: #e6f6ee;
+  --success-soft-rgb: 230 246 238;
+  --success-border: #b6e2c8;
+  --success-border-rgb: 182 226 200;
   --info: var(--brand-sky);
+  --info-rgb: var(--brand-sky-rgb);
+  --info-soft: #eff8ff;
+  --info-soft-rgb: 239 248 255;
+  --info-border: #bae6fd;
+  --info-border-rgb: 186 230 253;
   --midnight: var(--brand-midnight);
+  --midnight-rgb: var(--brand-midnight-rgb);
+  --ring: var(--primary);
+  --ring-rgb: var(--primary-rgb);
 }

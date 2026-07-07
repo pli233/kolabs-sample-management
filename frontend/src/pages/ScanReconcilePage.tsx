@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Download, UploadCloud } from 'lucide-react'
+import { CheckCircle2, Download, FileSpreadsheet, UploadCloud } from 'lucide-react'
 import { api, type Cell, type ScanResult, type ScanRow } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
 import { WrongLocationTable } from '@/components/WrongLocationTable'
+import { EmptyState, InlineError } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
 
 const CATEGORIES: { key: keyof ScanResult; label: string }[] = [
   { key: 'scan_not_in_database', label: 'Scanned, not in database' },
@@ -81,21 +84,16 @@ export function ScanReconcilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-title text-2xl font-semibold text-foreground">
-          Scan Reconcile
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Reconcile physical-rack scans against the active feed, matching by tube
-          code — flags scanned tubes not in the feed and duplicate scans.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Scan Reconcile"
+        description="Reconcile physical-rack scans against the active feed, matching by tube code. Flags scanned tubes not in the feed and duplicate scans."
+      />
 
-      <div className="space-y-3">
+      <div className="grid gap-4 rounded-lg border border-border bg-card p-3 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <label
           data-tour="scan-dropzone"
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 px-6 py-10 text-center transition-colors hover:border-primary/60 hover:bg-muted"
+          className="flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border bg-muted/50 px-6 py-10 text-center transition-colors hover:border-primary hover:bg-primary-subtle"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault()
@@ -110,7 +108,7 @@ export function ScanReconcilePage() {
               : 'Drag scan files here, or click to choose'}
           </span>
           <span className="text-sm text-muted-foreground">
-            .csv / .xlsx / .xls · multiple files
+            .csv / .xlsx / .xls, multiple files
           </span>
           <input
             type="file"
@@ -121,31 +119,58 @@ export function ScanReconcilePage() {
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
         </label>
-        <div className="flex items-center gap-3">
-          <Button data-tour="reconcile" onClick={run} disabled={loading || files.length === 0}>
-            {loading ? 'Reconciling…' : 'Reconcile'}
-          </Button>
-          {result && (
-            <Button variant="outline" onClick={() => api.scanReconcileDownload(files)}>
-              <Download className="h-4 w-4" /> Export report
+        <div className="flex min-w-0 flex-col justify-between gap-4 border-border lg:border-l lg:pl-4">
+          <div className="min-w-0">
+            <h2 className="font-title text-sm font-semibold text-foreground">
+              Scan batch
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {files.length === 0
+                ? 'No scan files selected.'
+                : `${files.length} file${files.length === 1 ? '' : 's'} selected`}
+            </p>
+            {files.length > 0 && (
+              <ul className="mt-3 flex max-h-24 flex-col gap-1 overflow-auto text-xs text-muted-foreground">
+                {files.slice(0, 5).map((file) => (
+                  <li key={`${file.name}-${file.size}`} className="flex min-w-0 items-center gap-2">
+                    <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="truncate">{file.name}</span>
+                  </li>
+                ))}
+                {files.length > 5 && <li>{files.length - 5} more files</li>}
+              </ul>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button data-tour="reconcile" onClick={run} disabled={loading || files.length === 0}>
+              {loading ? 'Reconciling...' : 'Reconcile'}
             </Button>
-          )}
+            {result && (
+              <Button variant="outline" onClick={() => api.scanReconcileDownload(files)}>
+                <Download className="h-4 w-4" /> Export report
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {error && (
-        <p className="text-sm text-[var(--destructive)]" role="alert">
-          {error}
-        </p>
+      {error && <InlineError message={error} />}
+
+      {!result && !loading && !error && (
+        <EmptyState
+          icon={FileSpreadsheet}
+          title="No reconcile run yet"
+          description="Choose one or more scan exports, then run reconcile to review issue categories."
+        />
       )}
 
       {result && (
-        <div className="space-y-4 pb-20">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6f6ee] px-3 py-1 font-medium text-[#127a48]">
+        <div className="flex flex-col gap-4 pb-20">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <Badge variant="success" className="px-3 py-1">
               <CheckCircle2 className="h-4 w-4" />
               {result.correct_matches.toLocaleString()} correct
-            </span>
+            </Badge>
             {tabs.length === 0 && (
               <span className="text-muted-foreground">No discrepancies found.</span>
             )}
@@ -153,30 +178,26 @@ export function ScanReconcilePage() {
 
           {tabs.length > 0 && (
             <>
-              {/* Category tabs — review one issue type at a time */}
-              <div className="flex flex-wrap gap-1 border-b border-border">
+              {/* Category tabs: review one issue type at a time. */}
+              <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
                 {tabs.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => setTab(t.id)}
                     className={cn(
-                      '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                      'flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       activeTab?.id === t.id
-                        ? 'border-primary text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
-                  >
-                    {t.label}
-                    <span
-                      className={cn(
-                        'rounded-full px-1.5 text-xs',
-                        activeTab?.id === t.id
-                          ? 'bg-sky-100 text-primary'
-                          : 'bg-muted text-muted-foreground'
-                      )}
+                    >
+                      {t.label}
+                    <Badge
+                      variant={activeTab?.id === t.id ? 'primary' : 'neutral'}
+                      className="px-1.5"
                     >
                       {t.count}
-                    </span>
+                    </Badge>
                   </button>
                 ))}
               </div>
@@ -202,8 +223,8 @@ export function ScanReconcilePage() {
 
       {/* Floating: export the (possibly edited) active feed, always in reach */}
       {result && activeId !== null && (
-        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
-          <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
+        <div className="pointer-events-none fixed bottom-6 left-4 right-4 z-40 flex justify-center md:left-60 md:right-6 md:justify-end">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 shadow-lg">
             <span className="text-sm font-medium text-foreground">
               Updated feed
             </span>

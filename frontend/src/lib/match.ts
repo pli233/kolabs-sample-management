@@ -1,28 +1,48 @@
 import type { MatchStatus } from '@/lib/api'
+import type { BadgeProps } from '@/components/ui/badge'
 
 interface Badge {
   label: string
+  variant: BadgeProps['variant']
   className: string
 }
 
-/** Per-sheet match state → label + badge classes. */
+/** Per-sheet match state to label + badge classes. */
 export const MATCH_BADGE: Record<MatchStatus, Badge> = {
-  matched: { label: 'Matches schema', className: 'bg-[#e6f6ee] text-[#127a48]' },
-  partial: {
-    label: 'Close · column diffs',
-    className: 'bg-[var(--warning)] text-[var(--warning-foreground)]',
+  matched: {
+    label: 'Matches schema',
+    variant: 'success',
+    className: 'bg-success-soft text-success',
   },
-  other: { label: 'Other sheet', className: 'bg-muted text-muted-foreground' },
+  partial: {
+    label: 'Close - column diffs',
+    variant: 'warning',
+    className: 'bg-warning text-warning-foreground',
+  },
+  other: {
+    label: 'Other sheet',
+    variant: 'neutral',
+    className: 'bg-muted text-muted-foreground',
+  },
 }
 
-/** File-level validation status (driven by the primary sheet) → label + classes. */
+/** File-level validation status (driven by the primary sheet) to label + classes. */
 export const FILE_STATUS_BADGE: Record<string, Badge> = {
-  valid: { label: 'Schema OK', className: 'bg-[#e6f6ee] text-[#127a48]' },
+  valid: {
+    label: 'Schema OK',
+    variant: 'success',
+    className: 'bg-success-soft text-success',
+  },
   issues: {
     label: 'Column mismatch',
-    className: 'bg-[var(--warning)] text-[var(--warning-foreground)]',
+    variant: 'warning',
+    className: 'bg-warning text-warning-foreground',
   },
-  unrecognized: { label: 'Unrecognized', className: 'bg-muted text-muted-foreground' },
+  unrecognized: {
+    label: 'Unrecognized',
+    variant: 'neutral',
+    className: 'bg-muted text-muted-foreground',
+  },
 }
 
 export function fileStatusBadge(status: string): Badge {

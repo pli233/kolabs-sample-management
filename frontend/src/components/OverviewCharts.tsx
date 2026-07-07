@@ -11,6 +11,8 @@ import {
 } from 'recharts'
 import { Boxes, ChevronDown, FolderTree, Snowflake } from 'lucide-react'
 import type { Bucket, Overview } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEscapeKey } from '@/lib/interactions'
 
 // Categorical brand-blue scale for bar series (intentional data palette, not semantic tokens).
 const BAR_COLORS = ['#0e8ed6', '#0b76b0', '#0112b8', '#3aa3df', '#010b24']
@@ -29,10 +31,11 @@ function Stat({
 }) {
   const [open, setOpen] = useState(false)
   const clickable = !!details?.length
+  useEscapeKey(open, () => setOpen(false))
 
   const card = (
     <div className="flex items-center gap-4 px-5 py-4">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-100 text-primary">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
         <Icon className="h-[22px] w-[22px]" />
       </span>
       <div>
@@ -48,7 +51,7 @@ function Stat({
   )
 
   if (!clickable) {
-    return <div className="rounded-xl border border-border bg-card">{card}</div>
+    return <Card>{card}</Card>
   }
 
   return (
@@ -56,13 +59,13 @@ function Stat({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/50"
+        className="w-full rounded-lg border border-border bg-card text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {card}
       </button>
       {open && (
         <>
-          <button
+          <div
             className="fixed inset-0 z-20 cursor-default"
             aria-hidden
             onClick={() => setOpen(false)}
@@ -111,10 +114,11 @@ function ChartCard({
   const height = horizontal ? Math.max(220, data.length * 22) : 220
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-3 font-title text-sm font-semibold text-foreground">
-        {title}
-      </h3>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
       {data.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No data</p>
       ) : (
@@ -177,14 +181,15 @@ function ChartCard({
           </ResponsiveContainer>
         </>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
 export function OverviewCharts({ overview }: { overview: Overview }) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <Stat icon={Boxes} label="Total tubes" value={overview.total.toLocaleString()} />
         <Stat
           icon={FolderTree}

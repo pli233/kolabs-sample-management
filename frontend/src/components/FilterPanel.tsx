@@ -2,7 +2,10 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { Filter, Plus, Trash2 } from 'lucide-react'
 import type { FilterCondition, FilterOp } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
+import { useEscapeKey } from '@/lib/interactions'
 import { cn } from '@/lib/utils'
 
 interface FilterPanelProps {
@@ -26,6 +29,7 @@ export function FilterPanel({
     null
   )
   const activeCount = conditions.filter(isActive).length
+  useEscapeKey(open, () => setOpen(false))
 
   // Position the popover under the trigger, clamped to stay clear of the fixed
   // sidebar (left) and the viewport edge (right).
@@ -35,7 +39,7 @@ export function FilterPanel({
       const el = triggerRef.current
       if (!el) return
       const r = el.getBoundingClientRect()
-      const SIDEBAR = 224
+      const SIDEBAR = window.innerWidth >= 768 ? 224 : 0
       const GAP = 8
       const width = Math.min(544, window.innerWidth - SIDEBAR - GAP * 2)
       const left = Math.max(
@@ -46,10 +50,8 @@ export function FilterPanel({
     }
     place()
     window.addEventListener('resize', place)
-    window.addEventListener('scroll', place, true)
     return () => {
       window.removeEventListener('resize', place)
-      window.removeEventListener('scroll', place, true)
     }
   }, [open])
 
@@ -73,21 +75,22 @@ export function FilterPanel({
       <Button
         variant="outline"
         size="sm"
+        type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Filter by column"
       >
         <Filter className="h-4 w-4" />
         Filter
         {activeCount > 0 && (
-          <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+          <Badge variant="primary" className="ml-0.5 px-1.5">
             {activeCount}
-          </span>
+          </Badge>
         )}
       </Button>
 
       {open && (
         <>
-          <button
+          <div
             className="fixed inset-0 z-20 cursor-default"
             aria-hidden
             onClick={() => setOpen(false)}
@@ -100,12 +103,13 @@ export function FilterPanel({
                 : { left: 240, top: 120, width: 544 }
             }
           >
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Match</span>
                 <div className="inline-flex overflow-hidden rounded-md border border-border">
                   {(['all', 'any'] as const).map((m) => (
                     <button
+                      type="button"
                       key={m}
                       onClick={() => onMatchModeChange(m)}
                       className={cn(
@@ -122,6 +126,7 @@ export function FilterPanel({
               </div>
               {conditions.length > 0 && (
                 <button
+                  type="button"
                   className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => onConditionsChange([])}
                 >
@@ -130,19 +135,19 @@ export function FilterPanel({
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               {conditions.length === 0 && (
                 <p className="py-2 text-center text-sm text-muted-foreground">
-                  No conditions yet — click “Add condition” below.
+                  No conditions yet. Add one below.
                 </p>
               )}
               {conditions.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_7rem_2rem]">
                   <select
                     value={c.column}
                     onChange={(e) => update(i, { column: e.target.value })}
                     aria-label="Filter column"
-                    className="h-8 min-w-0 flex-1 rounded border border-border bg-card px-2 text-sm"
+                    className="h-8 min-w-0 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   >
                     {columns.map((col) => (
                       <option key={col} value={col}>
@@ -156,7 +161,7 @@ export function FilterPanel({
                       update(i, { op: e.target.value as FilterOp })
                     }
                     aria-label="Operator"
-                    className="h-8 shrink-0 rounded border border-border bg-card px-2 text-sm"
+                    className="h-8 rounded-md border border-input bg-card px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   >
                     {FILTER_OPS.map((o) => (
                       <option key={o.op} value={o.op}>
@@ -164,18 +169,19 @@ export function FilterPanel({
                       </option>
                     ))}
                   </select>
-                  <input
+                  <Input
                     value={c.value}
                     onChange={(e) => update(i, { value: e.target.value })}
                     disabled={!opNeedsValue(c.op)}
-                    placeholder={opNeedsValue(c.op) ? 'value' : '—'}
+                    placeholder={opNeedsValue(c.op) ? 'value' : '-'}
                     aria-label="Filter value"
-                    className="h-8 w-28 shrink-0 rounded border border-border bg-card px-2 text-sm disabled:bg-muted disabled:text-muted-foreground"
+                    className="h-8"
                   />
                   <button
+                    type="button"
                     onClick={() => remove(i)}
                     aria-label="Remove condition"
-                    className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-[var(--destructive)]"
+                    className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -184,10 +190,10 @@ export function FilterPanel({
             </div>
 
             <div className="mt-3 flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={add}>
+              <Button type="button" variant="ghost" size="sm" onClick={add}>
                 <Plus className="h-4 w-4" /> Add condition
               </Button>
-              <Button size="sm" onClick={() => setOpen(false)}>
+              <Button type="button" size="sm" onClick={() => setOpen(false)}>
                 Done
               </Button>
             </div>

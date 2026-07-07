@@ -3,6 +3,18 @@ import { api, type Cell } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PageHeader } from '@/components/PageHeader'
+import { TableSurface } from '@/components/DataTableShell'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ExportMenu } from '@/components/ExportMenu'
 import { PlateGrid } from '@/components/PlateGrid'
 import { formatPosition, parsePosition, rowToLetters } from '@/lib/position'
@@ -27,7 +39,7 @@ export function PlateMapPage() {
   // Snapshot kept after a Clear so it can be undone; null hides the Undo button.
   const [undoCells, setUndoCells] = useState<Record<string, string> | null>(null)
 
-  // Row-major list of every grid position — the data list shows them all, blanks
+  // Row-major list of every grid position. The data list shows them all, blanks
   // included, so the table mirrors the source N2 BOX list form.
   const positions: string[] = []
   for (let r = 0; r < rows; r++)
@@ -50,7 +62,7 @@ export function PlateMapPage() {
    *    each label is scattered to its parsed well.
    *  - A grid/column of bare labels (the Export-Plate / Export-List shape): the
    *    cells are read row-major from `start` filling consecutive positions.
-   *    Header tokens (Sample_Info, Box, …) are skipped without eating a well. */
+   *    Header tokens (Sample_Info, Box, etc.) are skipped without eating a well. */
   function handlePaste(e: React.ClipboardEvent, start: number) {
     const text = e.clipboardData.getData('text')
     if (!text || (!text.includes('\n') && !text.includes('\t'))) return // single value: default
@@ -89,7 +101,7 @@ export function PlateMapPage() {
 
     const count = assignments.filter(([, lbl]) => lbl).length
     if (count === 0) {
-      setPaste({ kind: 'none', count: 0 }) // nothing recognized — change nothing
+      setPaste({ kind: 'none', count: 0 }) // nothing recognized, change nothing
       return
     }
     setCells((prev) => {
@@ -132,17 +144,19 @@ export function PlateMapPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-title text-2xl font-semibold text-foreground">Plate Map</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Type or paste a sample list — the plate fills in live. Click any well to
-          edit it. Both views export to Excel / CSV.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Plate Map"
+        description="Type or paste a sample list. The plate fills in live, any well can be edited, and both views export to Excel / CSV."
+        meta={
+          <Badge variant={filled > 0 ? 'info' : 'neutral'}>
+            {filled} / {positions.length} wells filled
+          </Badge>
+        }
+      />
 
       {/* config bar */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-3">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Box / Plate name
           <Input
@@ -176,7 +190,7 @@ export function PlateMapPage() {
             className="w-20"
           />
         </label>
-        <div className="ml-auto flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
           <ExportMenu onSelect={exportList} label="Export List" />
           <ExportMenu onSelect={exportPlate} label="Export Plate" />
           {undoCells && (
@@ -203,23 +217,18 @@ export function PlateMapPage() {
       </div>
 
       {confirmClear && (
-        <div
-          role="alertdialog"
-          aria-label="Confirm clear"
-          className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm"
-        >
-          <span>Clear all {filled} wells? You can undo this.</span>
-          <Button size="sm" onClick={doClear}>
-            Clear wells
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setConfirmClear(false)}>
-            Cancel
-          </Button>
-        </div>
+        <ConfirmDialog
+          destructive
+          title="Clear plate map"
+          description={`Clear all ${filled} wells? You can undo this for a short time.`}
+          confirmLabel="Clear wells"
+          onConfirm={doClear}
+          onCancel={() => setConfirmClear(false)}
+        />
       )}
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
-        {/* plate (left) — bounded; scrolls horizontally instead of pushing the list */}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,760px)_minmax(320px,1fr)]">
+        {/* Plate is bounded and scrolls horizontally instead of pushing the list. */}
         <PlateGrid rows={rows} cols={cols} cells={cells} onCellChange={setCell} />
 
         {/* data list (right) */}
@@ -229,50 +238,46 @@ export function PlateMapPage() {
               {filled} / {positions.length} wells filled
             </span>
             {paste && (
-              <span
+              <Badge
                 role="status"
-                className={
-                  paste.kind === 'none'
-                    ? 'rounded-full bg-[var(--warning-soft,#fef3c7)] px-2 py-0.5 font-medium text-[var(--warning-solid,#b45309)]'
-                    : 'rounded-full bg-muted px-2 py-0.5 font-medium text-foreground'
-                }
+                variant={paste.kind === 'none' ? 'warning' : 'outline'}
               >
                 {paste.kind === 'none'
-                  ? "Couldn't read that paste — expected A01⇥label rows or a grid"
+                  ? "Couldn't read that paste. Expected A01 + label rows or a grid"
                   : paste.kind === 'pairs'
                     ? `Read ${paste.count} wells as position + label`
                     : `Read ${paste.count} labels in order`}
-              </span>
+              </Badge>
             )}
           </div>
-          <div className="max-h-[32rem] overflow-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="w-20 px-3 py-2 font-medium">Position</th>
-                  <th className="px-3 py-2 font-medium">Sample_Info</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TableSurface className="max-h-[32rem] overflow-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur">
+                <TableRow className="border-t-0">
+                  <TableHead className="w-20">Position</TableHead>
+                  <TableHead>Sample_Info</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {positions.map((p, i) => (
-                  <tr key={p} className="border-t border-border">
-                    <td className="px-3 py-1 font-mono text-xs text-muted-foreground">
+                  <TableRow key={p}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {p}
-                    </td>
-                    <td className="px-1 py-0.5">
+                    </TableCell>
+                    <TableCell className="px-1 py-0.5">
                       <input
                         value={cells[p] ?? ''}
                         onChange={(e) => setCell(p, e.target.value)}
                         onPaste={(e) => handlePaste(e, i)}
                         aria-label={`Sample info for ${p}`}
-                        className="w-full rounded bg-transparent px-2 py-1 outline-none focus:bg-muted"
+                        className="w-full rounded-md bg-transparent px-2 py-1 outline-none focus:bg-muted focus:ring-1 focus:ring-primary"
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableSurface>
         </div>
       </div>
     </div>

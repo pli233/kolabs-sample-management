@@ -1,9 +1,13 @@
 import { useState } from 'react'
+import { Dices } from 'lucide-react'
 import { api, type QcParams, type QcResult } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { GlideTable } from '@/components/GlideTable'
+import { EmptyState, InlineError, ResultsSkeleton } from '@/components/Feedback'
+import { PageHeader } from '@/components/PageHeader'
 import { DEFAULT_VISIBLE } from '@/lib/table'
 
 export function QcSamplerPage() {
@@ -50,18 +54,21 @@ export function QcSamplerPage() {
   const missing = !project.trim() || !boxes.trim()
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-title text-2xl font-semibold text-foreground">
-          QC Sampler
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Seeded random QC sample, N tubes per box — box ranges like{' '}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="QC Sampler"
+        description={
+          <>
+          Seeded random QC sample, N tubes per box. Box ranges like{' '}
           <code>716-719,722</code>.
-        </p>
-      </div>
+          </>
+        }
+      />
 
-      <form onSubmit={run} className="flex flex-wrap items-end gap-3">
+      <form
+        onSubmit={run}
+        className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-3"
+      >
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Project
           <Input
@@ -104,7 +111,7 @@ export function QcSamplerPage() {
           />
         </label>
         <Button type="submit" disabled={loading || missing}>
-          {loading ? 'Sampling…' : 'Sample'}
+          {loading ? 'Sampling...' : 'Sample'}
         </Button>
         {missing && (
           <span className="self-center text-xs text-muted-foreground">
@@ -114,42 +121,35 @@ export function QcSamplerPage() {
       </form>
 
       {error && (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-3 py-2"
-        >
-          <span className="text-sm text-[var(--destructive)]">{error}</span>
-          <span className="text-xs text-muted-foreground">
-            Check the project and box range, then try again.
-          </span>
-          <Button type="button" variant="outline" size="sm" onClick={() => void execute()}>
-            Retry
-          </Button>
-        </div>
+        <InlineError
+          message={error}
+          detail="Check the project and box range, then try again."
+          retry={() => void execute()}
+        />
       )}
 
-      {loading && (
-        <div data-testid="results-loading" aria-hidden="true" className="space-y-2">
-          <div className="h-8 w-full max-w-md animate-pulse rounded bg-muted motion-reduce:animate-none" />
-          <div className="h-64 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
-        </div>
+      {loading && <ResultsSkeleton data-testid="results-loading" />}
+
+      {!result && !loading && !error && (
+        <EmptyState
+          icon={Dices}
+          title="Run a QC sample"
+          description="Enter a project and box range to generate a reproducible tube sample."
+        />
       )}
 
       {result && !loading && (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {!freshRun && (
-            <span
-              role="status"
-              className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
-            >
+            <Badge role="status" variant="neutral" className="self-start">
               Showing your last run
-            </span>
+            </Badge>
           )}
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>
               {result.rows.length} tube{result.rows.length === 1 ? '' : 's'} sampled
             </span>
-            <span className="text-muted-foreground/50">·</span>
+            <span className="text-muted-foreground/50">/</span>
             <span>reproducible with seed</span>
             <button
               type="button"
@@ -165,12 +165,9 @@ export function QcSamplerPage() {
 
           <div className="flex flex-wrap gap-1.5">
             {result.boxes.map((b) => (
-              <span
-                key={b.box}
-                className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground"
-              >
+              <Badge key={b.box} variant="outline">
                 box {b.box}: {b.sampled}/{b.available}
-              </span>
+              </Badge>
             ))}
           </div>
 
