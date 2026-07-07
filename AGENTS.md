@@ -7,9 +7,10 @@ before making changes.
 
 A lab biorepository (sample bank) manager. A **FastAPI** backend serves a
 **React + Vite** SPA from the same origin. Users upload an Excel/CSV "data feed"
-(the active feed is a server-wide singleton) and work against it with five tools:
-Dashboard, Box Lookup, QC Sampler, Aliquot Finder, Scan Reconcile, plus Data
-Feeds for upload/activation. The UI is **English** (Chinese only in docs/chat).
+(the active feed is a server-wide singleton) and work against it with six tools:
+Dashboard, Box Lookup, QC Sampler, Aliquot Finder, Scan Reconcile, Plate Map,
+plus Data Feeds for upload/activation. The UI is **English** (Chinese only in
+docs/chat).
 
 ## Layout
 
@@ -29,22 +30,26 @@ backend/            FastAPI app (Python 3.12)
   server.py         Headless uvicorn entry (the Electron sidecar)
 electron/           Electron desktop shell (main.cjs spawns the backend sidecar)
   build-dmg.sh      Build the packaged .dmg (freezes backend + electron-builder)
+  afterPack.cjs     Deep ad-hoc codesign after packing (stops "damaged" Gatekeeper error)
 frontend/           Vite + React + TS + Tailwind, shadcn-style UI
   src/components/    DataTable (client), DataTableView (server-paginated),
                      DataTableShell (shared header/rows/col-menu), ExportMenu,
-                     WrongLocationTable, FilterPanel, ui/*
+                     WrongLocationTable, FilterPanel, Tour (in-app Guide), ui/*
   src/pages/         One per tool
-  src/lib/           api.ts (fetch layer), persist.ts, table.ts, filters.ts
+  src/lib/           api.ts (fetch layer), persist.ts, table.ts, filters.ts,
+                     tours.ts (per-page Guide steps for Tour)
 data/               Sample/fixture spreadsheets
 Dockerfile          Multi-stage: build SPA, then serve SPA+API from Python
 render.yaml         Render Blueprint (free Docker web service)
+railway.json        Railway deploy config (same Dockerfile, binds $PORT)
 Makefile            Common tasks — run `make`
 ```
 
 ## Commands
 
 Use the Makefile. `make install`, `make backend`, `make frontend` (or `make dev`
-for both), `make test`, `make lint`, `make build`, `make dmg`, `make docker`.
+for both), `make test`, `make lint`, `make build`, `make docker`. Desktop builds:
+`make dmg` (Apple Silicon), `make dmg-intel` (Intel/x64), `make dmg-all` (both).
 
 - Frontend dev runs on `:5173` and proxies `/api` to the backend on `:8000`.
 - **Always run `make lint`** (tsc + eslint) before considering frontend work done.
@@ -87,6 +92,15 @@ for both), `make test`, `make lint`, `make build`, `make dmg`, `make docker`.
 - Export comes in three shapes: dashboard (server GET with filters, `exportUrl`),
   client tables (`POST /api/export-table` with the rows), and the Scan Reconcile
   report (multi-sheet xlsx). All support xlsx + csv (csv is UTF-8 BOM).
+- **The x64 dmg freezes the backend with Apple's `/usr/bin/python3` (3.9.6)**,
+  because no x86_64 Python 3.10+ is installed (the dev 3.12 is arm64-only). 3.9
+  can't evaluate the codebase's `int | None` annotations at runtime, so the
+  bundle crashed on boot until `build-dmg.sh` added `eval_type_backport` (pip +
+  PyInstaller hidden-import; a no-op on 3.10+). **Always runtime-test x64, not
+  just `lipo -archs`:** mount the dmg and run
+  `PORT=8765 .../Resources/backend/kolabs-backend`, then curl `/api/health` —
+  an arch-correct binary can still die on a Python-version mismatch. The real
+  fix is a CI build matrix or a universal2 Python 3.12 so both arches match.
 
 ## Conventions
 
@@ -99,6 +113,9 @@ for both), `make test`, `make lint`, `make build`, `make dmg`, `make docker`.
 
 ## Deploy
 
+- **Single image, two hosts.** `Dockerfile` builds the SPA then serves SPA+API
+  from Python on `$PORT`. Both `render.yaml` (Render) and `railway.json` (Railway)
+  point at that same Dockerfile — pick either.
 - **Render + Supabase (free, persistent).** Push to GitHub, deploy the
   `render.yaml` Blueprint, set `DB_URL` to a Supabase Postgres connection string.
   Use the **Session pooler** string (IPv4; Render free can't reach Supabase's
@@ -107,6 +124,9 @@ for both), `make test`, `make lint`, `make build`, `make dmg`, `make docker`.
   picks a free port, spawns `backend/server.py` (or the bundled `kolabs-backend`
   binary when packaged), waits for `/api/health`, then loads the SPA from it.
   Downloads are handled natively (`will-download` → ~/Downloads + reveal). Dev:
-  `make electron`. Package: `make dmg` → `electron/dist/*.dmg` (unsigned,
-  Apple-Silicon; freezes the backend via PyInstaller then runs electron-builder).
-  DB lives in `~/Library/Application Support/Kolabs Sample Management/`.
+  `make electron`. Package: `make dmg` (Apple Silicon), `make dmg-intel` (Intel),
+  or `make dmg-all` (both) → `electron/dist/*.dmg` (unsigned; freezes the backend
+  via PyInstaller then runs electron-builder). The x64 build runs under Rosetta
+  and has the Python-version caveat noted in **Gotchas** — runtime-test it, don't
+  just check the arch. DB lives in
+  `~/Library/Application Support/Kolabs Sample Management/`.

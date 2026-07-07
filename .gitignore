@@ -1,36 +1,26 @@
-node_modules/
-backend/uploads/
-backend/app.db
+# OS / editor
+.DS_Store
+
+# Python (backend)
+.venv/
+backend/.venv*/
 __pycache__/
 *.pyc
-.DS_Store
-dist/
-.venv/
-
-# backend
-backend/.venv/
-backend/uploads/
-backend/app.db
-backend/**/__pycache__/
 .pytest_cache/
-
-# frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-
-# e2e
-frontend/test-results/
-frontend/playwright-report/
-frontend/playwright/.cache/
+backend/app.db
+backend/*.oldschema
+backend/uploads/          # legacy: app is diskless, nothing should land here
 backend/.e2e/
-
-# macOS packaging artifacts
 backend/build/
 backend/*.spec
 
-# electron
-electron/node_modules/
+# Node (frontend + electron)
+node_modules/
+dist/
+frontend/.env
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
 electron/dist/
 
 # scraped brand assets (source files kept outside the repo)

@@ -31,26 +31,9 @@ import { FILTER_OPS, isActive, opNeedsValue } from '@/lib/filters'
 import { ColumnMenu } from '@/components/DataTableShell'
 import { ExportMenu } from '@/components/ExportMenu'
 import { GLIDE_THEME } from '@/lib/glideTheme'
-import { renderCell } from '@/lib/table'
+import { DEFAULT_VISIBLE, renderCell } from '@/lib/table'
 
 const PAGE_SIZE = 200
-
-// Columns shown by default (others are toggled on via the column menu).
-// 'pos' in the request maps to sample_pos; 'boxpos' to box_pos.
-const DEFAULT_VISIBLE = [
-  'record_id',
-  'project',
-  'freezer',
-  'shelf',
-  'rack',
-  'drawer',
-  'box_pos',
-  'box',
-  'sample_pos',
-  'cryobank',
-  'aliquot',
-  'track_id',
-]
 
 type SortState = { col: string; dir: 'asc' | 'desc' } | null
 

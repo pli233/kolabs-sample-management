@@ -8,7 +8,8 @@ PIP      := $(VENV)/bin/pip
 PORT     ?= 8000
 
 .PHONY: help install install-backend install-frontend backend frontend dev \
-        test test-backend test-frontend e2e lint build dmg docker clean
+        test test-backend test-frontend e2e lint build dmg dmg-intel dmg-all \
+        docker clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -56,12 +57,22 @@ electron: build ## Run the desktop app in dev (Electron + Python sidecar)
 	cd electron && npm start
 
 dmg: ## Build the Electron .dmg (Apple Silicon) -> electron/dist/
-	./electron/build-dmg.sh
+	./electron/build-dmg.sh arm64
+
+dmg-intel: ## Build the Electron .dmg (Intel/x86_64, via Rosetta) -> electron/dist/
+	./electron/build-dmg.sh x64
+
+# Sequential (not prerequisites) so a parallel `make -j` can't race the shared
+# backend/dist + frontend/dist that build-dmg.sh wipes each run.
+dmg-all: ## Build both .dmgs (Apple Silicon + Intel) -> electron/dist/
+	./electron/build-dmg.sh arm64
+	./electron/build-dmg.sh x64
 
 docker: ## Build the production Docker image (SPA + API in one)
 	docker build -t kolabs-sample-management .
 
-clean: ## Remove build artifacts and caches
+clean: ## Remove build artifacts, caches, and stale runtime cruft (keeps app.db)
 	rm -rf $(FRONTEND)/dist $(BACKEND)/build $(BACKEND)/dist \
-	  "$(BACKEND)/Kolabs Sample Management.spec"
+	  $(BACKEND)/uploads $(BACKEND)/.e2e $(BACKEND)/*.oldschema $(BACKEND)/*.spec
+	find . -name .DS_Store -not -path './.git/*' -delete 2>/dev/null || true
 	find $(BACKEND) -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true

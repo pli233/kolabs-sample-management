@@ -70,6 +70,12 @@ export function BoxLookupPage() {
         </p>
       )}
 
+      {!result && !error && !loading && (
+        <p className="rounded-lg border border-dashed border-border bg-muted px-4 py-10 text-center text-sm text-muted-foreground">
+          Enter a box number to see its tubes.
+        </p>
+      )}
+
       {result && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -80,7 +86,7 @@ export function BoxLookupPage() {
 
           {result.locations.length === 0 && (
             <p className="rounded-lg border border-dashed border-border bg-muted px-4 py-10 text-center text-sm text-muted-foreground">
-              No tubes found for this box in the active feed.
+              No tubes found for box {result.box} in the active feed.
             </p>
           )}
 

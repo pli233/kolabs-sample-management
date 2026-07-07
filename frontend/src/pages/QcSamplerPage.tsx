@@ -4,6 +4,7 @@ import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GlideTable } from '@/components/GlideTable'
+import { DEFAULT_VISIBLE } from '@/lib/table'
 
 export function QcSamplerPage() {
   const [project, setProject] = usePersistentState('qc.project', '')
@@ -13,6 +14,7 @@ export function QcSamplerPage() {
   const [result, setResult] = usePersistentState<QcResult | null>('qc.result', null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [freshRun, setFreshRun] = useState(false)
 
   function params(): QcParams {
     return {
@@ -23,8 +25,7 @@ export function QcSamplerPage() {
     }
   }
 
-  async function run(e: React.FormEvent) {
-    e.preventDefault()
+  async function execute() {
     if (!project.trim() || !boxes.trim()) return
     setLoading(true)
     setError(null)
@@ -32,6 +33,7 @@ export function QcSamplerPage() {
       const r = await api.qcSample(params())
       setResult(r)
       setSeed(String(r.seed)) // surface the seed used so it's reproducible
+      setFreshRun(true)
     } catch (err) {
       setError((err as Error).message)
       setResult(null)
@@ -39,6 +41,13 @@ export function QcSamplerPage() {
       setLoading(false)
     }
   }
+
+  function run(e: React.FormEvent) {
+    e.preventDefault()
+    void execute()
+  }
+
+  const missing = !project.trim() || !boxes.trim()
 
   return (
     <div className="space-y-6">
@@ -94,19 +103,48 @@ export function QcSamplerPage() {
             className="w-28"
           />
         </label>
-        <Button type="submit" disabled={loading || !project.trim() || !boxes.trim()}>
+        <Button type="submit" disabled={loading || missing}>
           {loading ? 'Sampling…' : 'Sample'}
         </Button>
+        {missing && (
+          <span className="self-center text-xs text-muted-foreground">
+            Enter a project and box range
+          </span>
+        )}
       </form>
 
       {error && (
-        <p className="text-sm text-[var(--destructive)]" role="alert">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/5 px-3 py-2"
+        >
+          <span className="text-sm text-[var(--destructive)]">{error}</span>
+          <span className="text-xs text-muted-foreground">
+            Check the project and box range, then try again.
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={() => void execute()}>
+            Retry
+          </Button>
+        </div>
       )}
 
-      {result && (
+      {loading && (
+        <div data-testid="results-loading" aria-hidden="true" className="space-y-2">
+          <div className="h-8 w-full max-w-md animate-pulse rounded bg-muted motion-reduce:animate-none" />
+          <div className="h-64 w-full animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        </div>
+      )}
+
+      {result && !loading && (
         <div className="space-y-3">
+          {!freshRun && (
+            <span
+              role="status"
+              className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
+            >
+              Showing your last run
+            </span>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>
               {result.rows.length} tube{result.rows.length === 1 ? '' : 's'} sampled
@@ -140,6 +178,7 @@ export function QcSamplerPage() {
             columns={result.columns}
             rows={result.rows}
             groupBy="box"
+            defaultVisible={DEFAULT_VISIBLE}
             exportName={`qc_${project.trim() || 'sample'}_seed${result.seed}`}
           />
         </div>

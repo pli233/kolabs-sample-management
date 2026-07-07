@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { api, type Cell } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,14 @@ export function PlateMapPage() {
     'plate.cells',
     {}
   )
+  // How the last paste was interpreted, surfaced as a badge so a wrong guess
+  // isn't silent. null = nothing pasted yet / cleared by a manual edit.
+  const [paste, setPaste] = useState<
+    { kind: 'pairs' | 'order' | 'none'; count: number } | null
+  >(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  // Snapshot kept after a Clear so it can be undone; null hides the Undo button.
+  const [undoCells, setUndoCells] = useState<Record<string, string> | null>(null)
 
   // Row-major list of every grid position — the data list shows them all, blanks
   // included, so the table mirrors the source N2 BOX list form.
@@ -27,6 +36,7 @@ export function PlateMapPage() {
   const filled = positions.filter((p) => cells[p]).length
 
   function setCell(pos: string, label: string) {
+    setPaste(null) // a manual edit clears the paste badge
     setCells((prev) => {
       const next = { ...prev }
       if (label.trim()) next[pos] = label // keep raw value so spaces type normally
@@ -56,28 +66,50 @@ export function PlateMapPage() {
       grid.length > 0 &&
       grid.every((row) => row.length >= 2 && inRange(parsePosition(row[0])))
 
+    // Compute the (position -> label) assignments first so we can report a count
+    // and bail without touching state when nothing parsed.
+    const assignments: [string, string][] = []
+    if (isPairs) {
+      for (const row of grid) {
+        assignments.push([
+          parsePosition(row[0])!.canonical,
+          row.slice(1).join('\t').trim(),
+        ])
+      }
+    } else {
+      let i = 0
+      for (const cell of grid.flat()) {
+        const v = cell.trim()
+        if (HEADER.has(v.toLowerCase())) continue // header label, not a sample
+        const p = positions[start + i++]
+        if (!p) break
+        assignments.push([p, v])
+      }
+    }
+
+    const count = assignments.filter(([, lbl]) => lbl).length
+    if (count === 0) {
+      setPaste({ kind: 'none', count: 0 }) // nothing recognized — change nothing
+      return
+    }
     setCells((prev) => {
       const next = { ...prev }
-      const assign = (pos: string, lbl: string) => {
+      for (const [pos, lbl] of assignments) {
         if (lbl) next[pos] = lbl
         else delete next[pos]
       }
-      if (isPairs) {
-        for (const row of grid) {
-          assign(parsePosition(row[0])!.canonical, row.slice(1).join('\t').trim())
-        }
-      } else {
-        let i = 0
-        for (const cell of grid.flat()) {
-          const v = cell.trim()
-          if (HEADER.has(v.toLowerCase())) continue // header label, not a sample
-          const p = positions[start + i++]
-          if (!p) break
-          assign(p, v)
-        }
-      }
       return next
     })
+    setPaste({ kind: isPairs ? 'pairs' : 'order', count })
+  }
+
+  function doClear() {
+    setUndoCells(cells)
+    setCells({})
+    setPaste(null)
+    setConfirmClear(false)
+    // Drop the undo offer after 5s so it doesn't linger forever.
+    setTimeout(() => setUndoCells(null), 5000)
   }
 
   function exportList(fmt: 'xlsx' | 'csv') {
@@ -147,10 +179,22 @@ export function PlateMapPage() {
         <div className="ml-auto flex items-end gap-2">
           <ExportMenu onSelect={exportList} label="Export List" />
           <ExportMenu onSelect={exportPlate} label="Export Plate" />
+          {undoCells && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCells(undoCells)
+                setUndoCells(null)
+              }}
+            >
+              Undo
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCells({})}
+            onClick={() => setConfirmClear(true)}
             disabled={filled === 0}
           >
             Clear
@@ -158,14 +202,48 @@ export function PlateMapPage() {
         </div>
       </div>
 
+      {confirmClear && (
+        <div
+          role="alertdialog"
+          aria-label="Confirm clear"
+          className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm"
+        >
+          <span>Clear all {filled} wells? You can undo this.</span>
+          <Button size="sm" onClick={doClear}>
+            Clear wells
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setConfirmClear(false)}>
+            Cancel
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
         {/* plate (left) — bounded; scrolls horizontally instead of pushing the list */}
         <PlateGrid rows={rows} cols={cols} cells={cells} onCellChange={setCell} />
 
         {/* data list (right) */}
         <div className="min-w-0">
-          <div className="mb-2 text-xs text-muted-foreground">
-            {filled} / {positions.length} wells filled
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              {filled} / {positions.length} wells filled
+            </span>
+            {paste && (
+              <span
+                role="status"
+                className={
+                  paste.kind === 'none'
+                    ? 'rounded-full bg-[var(--warning-soft,#fef3c7)] px-2 py-0.5 font-medium text-[var(--warning-solid,#b45309)]'
+                    : 'rounded-full bg-muted px-2 py-0.5 font-medium text-foreground'
+                }
+              >
+                {paste.kind === 'none'
+                  ? "Couldn't read that paste — expected A01⇥label rows or a grid"
+                  : paste.kind === 'pairs'
+                    ? `Read ${paste.count} wells as position + label`
+                    : `Read ${paste.count} labels in order`}
+              </span>
+            )}
           </div>
           <div className="max-h-[32rem] overflow-auto rounded-lg border border-border">
             <table className="w-full text-sm">

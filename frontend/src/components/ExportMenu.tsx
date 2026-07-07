@@ -32,7 +32,7 @@ export function ExportMenu({
         variant="outline"
         size="sm"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Export"
+        aria-label={label}
       >
         <Download className="h-4 w-4" />
         {label}

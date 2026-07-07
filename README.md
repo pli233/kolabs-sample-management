@@ -32,7 +32,8 @@ All tools run against the **current active feed**.
   for multi-sheet workbooks; set which feed is active.
 
 Tables let you **click a cell to copy** its value, and tool results **persist
-when you switch tabs**.
+when you switch tabs**. Each page has an in-app **Guide** (the `?` button) that
+walks through that page's controls.
 
 ## Quick start
 
@@ -97,7 +98,8 @@ See **[AGENTS.md](AGENTS.md)** for deeper internals, conventions, and gotchas.
 ## Deploy
 
 Single service (API serves the built SPA). The repo ships a multi-stage
-`Dockerfile` that binds `$PORT`.
+`Dockerfile` that binds `$PORT`; both `render.yaml` (Render) and `railway.json`
+(Railway) deploy from it.
 
 **Render + Supabase (free, persistent):**
 
