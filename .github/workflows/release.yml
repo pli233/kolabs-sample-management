@@ -1,36 +1,56 @@
-name: release
+name: desktop-installers
 
-# Builds all three installers on native runners and (on a version tag) publishes
-# them to a GitHub Release. Each runner uses native Python 3.12 + Node 20, so the
-# Python backend is frozen with a consistent toolchain — no Rosetta / version
-# hacks. Trigger a build without publishing via "Run workflow" (workflow_dispatch);
-# publish by pushing a tag, e.g. `git tag v1.0.0 && git push origin v1.0.0`.
+# Builds desktop installers on native standard GitHub-hosted runners.
+#
+# Lowest-cost path:
+# - the repo is public, so standard GitHub-hosted runner minutes are free;
+# - no larger runners, no self-hosting, no paid code-signing/notarization;
+# - workflow_dispatch uploads short-lived artifacts for download;
+# - pushing a v* tag also publishes those installers to a GitHub Release.
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag. Defaults to manual-<run>-<sha>."
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the manual release as a prerelease."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
   build:
+    name: build-${{ matrix.id }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14        # Apple Silicon
-            pack: npx electron-builder --mac dmg --arm64
-            sep: ':'
-            artifact: '*-arm64.dmg'
-          - os: macos-13        # Intel
-            pack: npx electron-builder --mac dmg --x64
-            sep: ':'
-            artifact: '*-x64.dmg'
-          - os: windows-latest
-            pack: npx electron-builder --win nsis --x64
-            sep: ';'
-            artifact: '*Setup.exe'
+          - id: macos-arm64
+            os: macos-14
+            pack: npx electron-builder --mac dmg --arm64 --publish never
+            add_data_sep: ':'
+            artifact_glob: '*-arm64.dmg'
+            artifact_name: kolabs-macos-arm64-dmg
+          - id: macos-intel
+            os: macos-15-intel
+            pack: npx electron-builder --mac dmg --x64 --publish never
+            add_data_sep: ':'
+            artifact_glob: '*-x64.dmg'
+            artifact_name: kolabs-macos-intel-dmg
+          - id: windows-x64
+            os: windows-latest
+            pack: npx electron-builder --win nsis --x64 --publish never
+            add_data_sep: ';'
+            artifact_glob: '*-x64-Setup.exe'
+            artifact_name: kolabs-windows-x64-nsis
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -46,6 +66,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Show native toolchain
+        run: |
+          uname -a || true
+          node --version
+          python -c "import platform; print(platform.platform(), platform.machine())"
+
       # --- frontend SPA ---
       - run: npm ci
         working-directory: frontend
@@ -59,7 +85,7 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements.txt pyinstaller
           pyinstaller --noconfirm --name kolabs-backend \
-            --add-data "../frontend/dist${{ matrix.sep }}frontend/dist" \
+            --add-data "../frontend/dist${{ matrix.add_data_sep }}frontend/dist" \
             --collect-all uvicorn \
             --collect-submodules app \
             --hidden-import app.main \
@@ -72,15 +98,21 @@ jobs:
         working-directory: electron
         run: ${{ matrix.pack }}
 
+      - name: List installer artifacts
+        run: |
+          find electron/dist -maxdepth 1 -type f \
+            \( -name '*.dmg' -o -name '*.exe' \) -print
+
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}
-          path: electron/dist/${{ matrix.artifact }}
+          name: ${{ matrix.artifact_name }}
+          path: electron/dist/${{ matrix.artifact_glob }}
           if-no-files-found: error
+          retention-days: 7
 
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -92,7 +124,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" $(find dist -type f) \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+          short_sha="${GITHUB_SHA::7}"
+          release_tag=""
+          release_title=""
+          prerelease="true"
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            release_tag="$GITHUB_REF_NAME"
+            release_title="$GITHUB_REF_NAME"
+            prerelease="false"
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            input_tag="${{ inputs.release_tag }}"
+            release_tag="${input_tag:-manual-${GITHUB_RUN_NUMBER}-${short_sha}}"
+            release_title="Manual desktop installers ${release_tag}"
+            prerelease="${{ inputs.prerelease }}"
+          else
+            release_tag="desktop-${short_sha}"
+            release_title="Desktop installers ${short_sha}"
+            prerelease="true"
+          fi
+
+          mapfile -d '' files < <(find dist -type f -print0)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No installer artifacts found" >&2
+            exit 1
+          fi
+
+          repo_flags=(--repo "$GITHUB_REPOSITORY")
+          create_flags=("${repo_flags[@]}")
+          if [ "$prerelease" = "true" ]; then
+            create_flags+=(--prerelease)
+          fi
+
+          if gh release view "$release_tag" "${repo_flags[@]}" >/dev/null 2>&1; then
+            gh release upload "$release_tag" "${files[@]}" \
+              "${repo_flags[@]}" \
+              --clobber
+          else
+            gh release create "$release_tag" "${files[@]}" \
+              "${create_flags[@]}" \
+              --target "$GITHUB_SHA" \
+              --title "$release_title" \
+              --generate-notes
+          fi
