@@ -346,7 +346,16 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
             if not is_valid_code(row_code):
                 continue
             if row_code not in scanned_valid_codes:
-                out["database_not_in_scan"].append(row_to_dict(row))
+                out["database_not_in_scan"].append(
+                    {
+                        **row_to_dict(row),
+                        "scanned_tube_code": "No Tube",
+                        "scanned_project": cell(row, proj_i),
+                        "scanned_box": cell(row, box_i),
+                        "scanned_position": cell(row, pos_i),
+                        "scanned_source": None,
+                    }
+                )
 
     out["duplicate_scan_tubecodes"] = [
         {"tube_code": c, "count": n} for c, n in seen_codes.items() if n > 1
