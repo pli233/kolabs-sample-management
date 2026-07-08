@@ -202,3 +202,82 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
         {"tube_code": c, "count": n} for c, n in seen_codes.items() if n > 1
     ]
     return out
+
+
+def build_missing_box_review(db_sheet: dict, missing_records: list[dict]) -> list[dict]:
+    """Return full-database rows for each missing scanned tube's box, plus helpers."""
+    columns = db_sheet["columns"]
+    idx = {c: i for i, c in enumerate(columns)}
+    proj_i, box_i = idx.get("project"), idx.get("box")
+
+    def db_row_dict(row: list) -> dict:
+        return {column: row[i] if i < len(row) else None for i, column in enumerate(columns)}
+
+    out: list[dict] = []
+    for rec_i, rec in enumerate(missing_records):
+        candidates = [
+            row
+            for row in db_sheet["rows"]
+            if proj_i is not None
+            and box_i is not None
+            and str(row[proj_i]).strip() == str(rec.get("project", "")).strip()
+            and str(row[box_i]).strip() == str(rec.get("box", "")).strip()
+        ]
+        if not candidates:
+            blank = {column: None for column in columns}
+            out.append(
+                {
+                    **blank,
+                    "review_id": f"missing-{rec_i}-0",
+                    "scanned_tube_code": rec.get("tube_code"),
+                    "scanned_project": rec.get("project"),
+                    "scanned_box": rec.get("box"),
+                    "scanned_position": rec.get("position"),
+                    "scanned_source": rec.get("source"),
+                }
+            )
+            continue
+        for row_i, row in enumerate(candidates):
+            out.append(
+                {
+                    **db_row_dict(row),
+                    "review_id": f"missing-{rec_i}-{row_i}",
+                    "scanned_tube_code": rec.get("tube_code"),
+                    "scanned_project": rec.get("project"),
+                    "scanned_box": rec.get("box"),
+                    "scanned_position": rec.get("position"),
+                    "scanned_source": rec.get("source"),
+                }
+            )
+    return out
+
+
+def build_wrong_location_review(db_sheet: dict, wrong_rows: list[dict]) -> list[dict]:
+    """Return full-database rows with scanned-location helpers for wrong-location fixes."""
+    columns = db_sheet["columns"]
+    idx = {c: i for i, c in enumerate(columns)}
+    record_i = idx.get("record_id")
+
+    def db_row_dict(row: list) -> dict:
+        return {column: row[i] if i < len(row) else None for i, column in enumerate(columns)}
+
+    by_record = {}
+    for row in db_sheet["rows"]:
+        if record_i is not None and record_i < len(row):
+            by_record[str(row[record_i])] = row
+
+    out: list[dict] = []
+    for i, item in enumerate(wrong_rows):
+        row = by_record.get(str(item.get("record_id", "")))
+        if row is None:
+            continue
+        out.append(
+            {
+                **db_row_dict(row),
+                "review_id": f"wrong-{i}",
+                "scanned_box": item.get("box"),
+                "scanned_position": item.get("position"),
+                "scanned_source": item.get("source"),
+            }
+        )
+    return out

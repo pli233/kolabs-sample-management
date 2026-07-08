@@ -131,7 +131,34 @@ export interface QcResult {
   project: string
   seed: number
   perBox: number
-  boxes: { box: string; available: number; sampled: number }[]
+  preferredFreezer: string | null
+  locationColumns: string[]
+  boxes: {
+    box: string
+    available: number
+    sampled: number
+    status:
+      | 'ok'
+      | 'resolved_by_location_override'
+      | 'resolved_by_preferred_freezer'
+      | 'ambiguous'
+      | 'ambiguous_in_preferred_freezer'
+      | 'preferred_freezer_no_match'
+      | 'location_override_no_match'
+    locationCount: number
+    location?: Record<string, Cell>
+  }[]
+  ambiguousBoxes: {
+    box: string
+    status:
+      | 'ambiguous'
+      | 'ambiguous_in_preferred_freezer'
+      | 'preferred_freezer_no_match'
+      | 'location_override_no_match'
+    preferred_freezer: string | null
+    selected_location?: Record<string, Cell> | null
+    locations: { location: Record<string, Cell>; count: number }[]
+  }[]
   columns: string[]
   rows: Cell[][]
 }
@@ -141,6 +168,8 @@ export interface QcParams {
   boxes: string
   perBox: number
   seed?: number | null
+  preferredFreezer?: string
+  locationOverrides?: Record<string, Record<string, Cell>>
 }
 
 export interface ToolTable {
@@ -152,25 +181,36 @@ export type ScanRow = Record<string, Cell>
 
 export interface ScanResult {
   scan_not_in_database: ScanRow[]
+  scan_not_in_database_review: ScanRow[]
   wrong_location: ScanRow[]
+  wrong_location_review: ScanRow[]
   database_not_in_scan: ScanRow[]
   position_conflicts: ScanRow[]
   duplicate_scan_tubecodes: ScanRow[]
   correct_matches: number
   fileSummary: ScanRow[]
   fileErrors: ScanRow[]
+  databaseColumns: string[]
 }
 
 export interface AliquotParams {
   ids: string
   preferredFreezer?: string
   backups: number
+  filters?: FilterCondition[]
+  match?: 'all' | 'any'
 }
 
 function aliquotQuery(p: AliquotParams): URLSearchParams {
   const params = new URLSearchParams({ ids: p.ids, backups: String(p.backups) })
   if (p.preferredFreezer && p.preferredFreezer.trim()) {
     params.set('preferred_freezer', p.preferredFreezer.trim())
+  }
+  if (p.filters && p.filters.length > 0) {
+    params.set('filters', JSON.stringify(p.filters))
+  }
+  if (p.match) {
+    params.set('match', p.match)
   }
   return params
 }
@@ -182,6 +222,9 @@ function qcQuery(p: QcParams): URLSearchParams {
     per_box: String(p.perBox),
   })
   if (p.seed != null) params.set('seed', String(p.seed))
+  if (p.preferredFreezer && p.preferredFreezer.trim()) {
+    params.set('preferred_freezer', p.preferredFreezer.trim())
+  }
   return params
 }
 

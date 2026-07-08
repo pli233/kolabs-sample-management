@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
 import {
   DataEditor,
   GridCellKind,
@@ -78,6 +78,21 @@ interface GlideTableProps {
   defaultVisible?: string[]
   searchable?: boolean
   emptyText?: string
+  toolbarActions?: (ctx: {
+    visibleCols: string[]
+    view: Cell[][]
+    rows: Cell[][]
+    colIndex: Record<string, number>
+    picks: Set<Cell[]>
+    extras: Record<string, Record<string, string>>
+    groupKeyForRow: (row: Cell[]) => string
+    exportTable: (
+      columns: string[],
+      rows: Cell[][],
+      filename: string,
+      fmt: 'xlsx' | 'csv'
+    ) => Promise<void>
+  }) => ReactNode
 }
 
 /**
@@ -96,6 +111,7 @@ export function GlideTable({
   defaultVisible,
   searchable = true,
   emptyText = 'No rows.',
+  toolbarActions,
 }: GlideTableProps) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(
@@ -450,11 +466,21 @@ export function GlideTable({
                     view.map((r) => visibleCols.map((c) => r[colIndex[c]])),
                     exportName,
                     fmt
-                  )
+                )
                   .catch(() => {})
               }
             />
           )}
+          {toolbarActions?.({
+            visibleCols,
+            view,
+            rows,
+            colIndex,
+            picks,
+            extras,
+            groupKeyForRow: groupVal,
+            exportTable: api.exportTable,
+          })}
         </div>
       </TableToolbar>
 

@@ -11,14 +11,42 @@ def test_parse_pairs_tab_and_spaces_and_dedupes():
 
 
 def _sheet(rows):
-    cols = ["project", "project_id", "freezer", "rack", "drawer", "box_pos",
-            "box", "sample_pos", "aliquot", "cryobank", "track_id", "record_id"]
+    cols = [
+        "project",
+        "project_id",
+        "type",
+        "volume_ul",
+        "freezer",
+        "rack",
+        "drawer",
+        "box_pos",
+        "box",
+        "sample_pos",
+        "aliquot",
+        "cryobank",
+        "track_id",
+        "record_id",
+    ]
     return {"columns": cols, "rows": rows}
 
 
-def _tube(project_id, freezer, aliquot_id, project="L37"):
-    return [project, project_id, freezer, "1", "1", "1", "300",
-            "A01", aliquot_id, "NTBI" + aliquot_id, "trk" + aliquot_id, aliquot_id]
+def _tube(project_id, freezer, aliquot_id, project="L37", tube_type="Soro", volume="80"):
+    return [
+        project,
+        project_id,
+        tube_type,
+        volume,
+        freezer,
+        "1",
+        "1",
+        "1",
+        "300",
+        "A01",
+        aliquot_id,
+        "NTBI" + aliquot_id,
+        "trk" + aliquot_id,
+        aliquot_id,
+    ]
 
 
 def _col(row, name):
@@ -89,3 +117,43 @@ def test_preferred_freezer_fallback_notes():
     sheet = _sheet([_tube("416180.04", "3", "1")])
     res = find_aliquots(sheet, [("L37", "416180.04")], preferred_freezer="9", backups=0)
     assert "Preferred freezer 9" in _col(res["rows"][0], "note")
+
+
+def test_output_includes_source_columns_for_filtering():
+    sheet = _sheet([_tube("416180.04", "3", "1", tube_type="Soro", volume="55")])
+    res = find_aliquots(sheet, [("L37", "416180.04")], None, 0)
+
+    assert "type" in res["columns"]
+    assert "volume_ul" in res["columns"]
+    first = res["rows"][0]
+    assert first[res["columns"].index("type")] == "Soro"
+    assert first[res["columns"].index("volume_ul")] == "55"
+
+
+def test_filters_apply_before_primary_and_backups():
+    sheet = _sheet(
+        [
+            _tube("416180.04", "3", "1", tube_type="Soro", volume="80"),
+            _tube("416180.04", "3", "2", tube_type="Saliva", volume="80"),
+            _tube("416180.04", "1", "3", tube_type="Soro", volume="40"),
+            _tube("416180.04", "1", "4", tube_type="Soro", volume="60"),
+        ]
+    )
+
+    res = find_aliquots(
+        sheet,
+        [("L37", "416180.04")],
+        preferred_freezer=None,
+        backups=2,
+        filters=[
+            {"column": "type", "op": "equals", "value": "Soro"},
+            {"column": "volume_ul", "op": "gte", "value": "50"},
+        ],
+        match_mode="all",
+    )
+
+    assert len(res["rows"]) == 2
+    assert all(row[res["columns"].index("type")] == "Soro" for row in res["rows"])
+    assert all(float(row[res["columns"].index("volume_ul")]) >= 50 for row in res["rows"])
+    assert res["rows"][0][res["columns"].index("choice")] == "PRIMARY"
+    assert res["rows"][1][res["columns"].index("choice")] == "BACKUP"

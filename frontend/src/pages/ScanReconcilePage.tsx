@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
+import { ScanDatabaseReviewTable } from '@/components/ScanDatabaseReviewTable'
 import { WrongLocationTable } from '@/components/WrongLocationTable'
 import { EmptyState, InlineError } from '@/components/Feedback'
 import { PageHeader } from '@/components/PageHeader'
@@ -209,7 +210,21 @@ export function ScanReconcilePage() {
                   exportName="scan_files"
                 />
               ) : activeTab?.id === 'wrong_location' ? (
-                <WrongLocationTable rows={result.wrong_location} />
+                result.wrong_location_review.length > 0 ? (
+                  <ScanDatabaseReviewTable
+                    rows={result.wrong_location_review}
+                    databaseColumns={result.databaseColumns}
+                    mode="wrong_location"
+                  />
+                ) : (
+                  <WrongLocationTable rows={result.wrong_location} />
+                )
+              ) : activeTab?.id === 'scan_not_in_database' ? (
+                <ScanDatabaseReviewTable
+                  rows={result.scan_not_in_database_review}
+                  databaseColumns={result.databaseColumns}
+                  mode="missing"
+                />
               ) : activeTab ? (
                 <GlideTable
                   {...toTable(result[activeTab.id as keyof ScanResult] as ScanRow[])}

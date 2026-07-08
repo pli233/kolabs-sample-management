@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.tools.scan import dedup_files, parse_scan, reconcile
+from app.tools.scan import build_missing_box_review, dedup_files, parse_scan, reconcile
 
 _REAL_XLS = Path(__file__).resolve().parent.parent.parent / "data" / "sample_scan.xls"
 
@@ -51,6 +51,15 @@ def test_reconcile_matches_on_tube_code_only():
         d["tube_code"] == "NTBX9" and d["count"] == 2
         for d in out["duplicate_scan_tubecodes"]
     )
+
+
+def test_missing_box_review_returns_full_db_rows_for_same_box():
+    records = [_rec("NTBX9", "A09")]
+    review = build_missing_box_review(_db(), records)
+    assert len(review) == 3
+    assert all(row["project"] == "L37" for row in review)
+    assert all(str(row["box"]) == "716" for row in review)
+    assert all(row["scanned_tube_code"] == "NTBX9" for row in review)
 
 
 def test_dedup_drops_overlapping_file():

@@ -572,6 +572,8 @@ def qc_sample_route(
     boxes: str = Query(..., min_length=1),
     per_box: int = Query(5, ge=1),
     seed: int | None = Query(None),
+    preferred_freezer: str | None = Query(None),
+    location_overrides: str | None = Query(None),
     format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy make_project_box_qc_list: seeded random QC sample per box."""
@@ -581,9 +583,28 @@ def qc_sample_route(
     if not box_list:
         raise HTTPException(status_code=400, detail="No valid box numbers")
     used_seed = seed if seed is not None else _random.randrange(1, 2**31)
+    parsed_overrides: dict[str, dict] | None = None
+    if location_overrides:
+        try:
+            parsed = json.loads(location_overrides)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="Invalid location_overrides JSON") from exc
+        if not isinstance(parsed, dict):
+            raise HTTPException(status_code=400, detail="location_overrides must be an object")
+        parsed_overrides = {
+            str(box): value for box, value in parsed.items() if isinstance(value, dict)
+        }
 
     sheet = _primary_sheet(_active_record())
-    result = qc.qc_sample(sheet, project, box_list, per_box, used_seed)
+    result = qc.qc_sample(
+        sheet,
+        project,
+        box_list,
+        per_box,
+        used_seed,
+        preferred_freezer=preferred_freezer,
+        location_overrides=parsed_overrides,
+    )
     if format in ("xlsx", "csv"):
         return _table_response(
             result["columns"], result["rows"], f"qc_{project}_seed{used_seed}", format
@@ -610,6 +631,8 @@ def aliquot_finder_route(
     ids: str = Query(..., min_length=1),
     preferred_freezer: str | None = Query(None),
     backups: int = Query(3, ge=0),
+    filters: str | None = Query(None),
+    match: str = Query("all", pattern="^(all|any)$"),
     format: str = Query("json", pattern="^(json|xlsx|csv)$"),
 ):
     """Legacy find_person_aliquots: PRIMARY + BACKUP picks per person.
@@ -618,8 +641,24 @@ def aliquot_finder_route(
     pairs = aliquot.parse_pairs(ids)
     if not pairs:
         raise HTTPException(status_code=400, detail="No ids provided")
+    parsed_filters: list[dict] | None = None
+    if filters:
+        try:
+            parsed = json.loads(filters)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="Invalid filters JSON") from exc
+        if not isinstance(parsed, list):
+            raise HTTPException(status_code=400, detail="filters must be a JSON array")
+        parsed_filters = [item for item in parsed if isinstance(item, dict)]
     sheet = _primary_sheet(_active_record())
-    result = aliquot.find_aliquots(sheet, pairs, preferred_freezer, backups)
+    result = aliquot.find_aliquots(
+        sheet,
+        pairs,
+        preferred_freezer,
+        backups,
+        filters=parsed_filters,
+        match_mode=match,
+    )
     columns, rows = _drop_empty_columns(result["columns"], result["rows"])
     if format in ("xlsx", "csv"):
         return _table_response(columns, rows, "aliquot_finder", format)
@@ -666,6 +705,13 @@ async def scan_reconcile_route(
     result = scan.reconcile(db, records)
     result["fileSummary"] = dedup["summary"]
     result["fileErrors"] = errors
+    result["databaseColumns"] = db["columns"]
+    result["scan_not_in_database_review"] = scan.build_missing_box_review(
+        db, result["scan_not_in_database"]
+    )
+    result["wrong_location_review"] = scan.build_wrong_location_review(
+        db, result["wrong_location"]
+    )
 
     if format == "xlsx":
         sheets: dict[str, tuple[list[str], list[list]]] = {}
