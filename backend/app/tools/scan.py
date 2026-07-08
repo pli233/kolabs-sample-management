@@ -329,23 +329,33 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
 
 
 def build_missing_box_review(db_sheet: dict, missing_records: list[dict]) -> list[dict]:
-    """Return full-database rows for each missing scanned tube's box, plus helpers."""
+    """Return DB rows at the scanned slot, plus scanned-tube helpers.
+
+    For each scanned tube not found by code, show the database row(s) already at
+    that exact project + box + position. If the slot is empty in the database,
+    return one blank database row with the scanned helpers appended.
+    """
     columns = db_sheet["columns"]
     idx = {c: i for i, c in enumerate(columns)}
-    proj_i, box_i = idx.get("project"), idx.get("box")
+    proj_i, box_i, pos_i = idx.get("project"), idx.get("box"), idx.get("sample_pos")
 
     def db_row_dict(row: list) -> dict:
         return {column: row[i] if i < len(row) else None for i, column in enumerate(columns)}
 
     out: list[dict] = []
     for rec_i, rec in enumerate(missing_records):
+        rec_project = str(rec.get("project", "")).strip()
+        rec_box = str(rec.get("box", "")).strip()
+        rec_pos = normalize_position(rec.get("position")) or ""
         candidates = [
             row
             for row in db_sheet["rows"]
             if proj_i is not None
             and box_i is not None
-            and str(row[proj_i]).strip() == str(rec.get("project", "")).strip()
-            and str(row[box_i]).strip() == str(rec.get("box", "")).strip()
+            and pos_i is not None
+            and str(row[proj_i]).strip() == rec_project
+            and str(row[box_i]).strip() == rec_box
+            and (normalize_position(row[pos_i]) or "") == rec_pos
         ]
         if not candidates:
             blank = {column: None for column in columns}

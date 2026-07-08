@@ -57,13 +57,26 @@ def test_reconcile_matches_on_tube_code_only():
     )
 
 
-def test_missing_box_review_returns_full_db_rows_for_same_box():
+def test_missing_box_review_returns_db_rows_at_same_slot_only():
+    records = [_rec("NTBX9", "A02")]
+    review = build_missing_box_review(_db(), records)
+    assert len(review) == 1
+    assert review[0]["project"] == "L37"
+    assert str(review[0]["box"]) == "716"
+    assert review[0]["sample_pos"] == "A02"
+    assert review[0]["scanned_tube_code"] == "NTBX9"
+
+
+def test_missing_box_review_returns_blank_db_cols_when_slot_empty():
     records = [_rec("NTBX9", "A09")]
     review = build_missing_box_review(_db(), records)
-    assert len(review) == 3
-    assert all(row["project"] == "L37" for row in review)
-    assert all(str(row["box"]) == "716" for row in review)
-    assert all(row["scanned_tube_code"] == "NTBX9" for row in review)
+    assert len(review) == 1
+    assert review[0]["project"] is None
+    assert review[0]["box"] is None
+    assert review[0]["sample_pos"] is None
+    assert review[0]["scanned_project"] == "L37"
+    assert review[0]["scanned_box"] == "716"
+    assert review[0]["scanned_position"] == "A09"
 
 
 def test_dedup_drops_overlapping_file():

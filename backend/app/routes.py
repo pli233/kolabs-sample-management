@@ -88,6 +88,7 @@ class ApplyPositionBody(BaseModel):
     record_id: int | str
     box: int | str | None = None
     sample_pos: str | None = None
+    cryobank: str | None = None
 
 
 class ApplyPositionsBody(BaseModel):
@@ -95,8 +96,7 @@ class ApplyPositionsBody(BaseModel):
 
 
 def _apply_positions(items: list[ApplyPositionBody]) -> int:
-    """Write box/sample_pos for the given records into the active feed (one DB
-    write). Used by single and batch apply, and by revoke (expected values)."""
+    """Write selected fields for the given records into the active feed."""
     record = _active_record()
     parsed = storage.load_parsed(record.id, record.parsed_json)
     sheets = parsed["sheets"]
@@ -108,7 +108,12 @@ def _apply_positions(items: list[ApplyPositionBody]) -> int:
         raise HTTPException(status_code=422, detail="Feed has no sheet to edit")
 
     idx = {c: i for i, c in enumerate(sheet["columns"])}
-    ri, bi, pi = idx.get("record_id"), idx.get("box"), idx.get("sample_pos")
+    ri, bi, pi, ci = (
+        idx.get("record_id"),
+        idx.get("box"),
+        idx.get("sample_pos"),
+        idx.get("cryobank"),
+    )
     if ri is None:
         raise HTTPException(status_code=400, detail="Feed has no record_id column")
 
@@ -125,6 +130,8 @@ def _apply_positions(items: list[ApplyPositionBody]) -> int:
             target[bi] = it.box
         if it.sample_pos is not None and pi is not None:
             target[pi] = it.sample_pos
+        if it.cryobank is not None and ci is not None:
+            target[ci] = it.cryobank
         applied += 1
 
     if applied:
@@ -168,9 +175,10 @@ def apply_positions(body: ApplyPositionsBody):
 async def import_scan_reconcile_review(file: UploadFile = File(...)):
     """Apply reconcile updates from an exported review file.
 
-    The file must contain `confirm_update`, `record_id`, and scanned/scan
-    location columns. Rows with `confirm_update = 1` are written back into the
-    active feed.
+    Rows with `confirm_update = 1` are written back into the active feed.
+    Supported review files can update either:
+    - `box` / `sample_pos` from scanned location columns
+    - `cryobank` from `scanned_tube_code`
     """
     ext = Path(file.filename or "").suffix.lower()
     if ext not in {".xlsx", ".csv"}:
@@ -203,13 +211,16 @@ async def import_scan_reconcile_review(file: UploadFile = File(...)):
     confirm_i = _first_present(idx, "confirm_update")
     box_i = _first_present(idx, "scanned_box", "scan_box", "box")
     pos_i = _first_present(idx, "scanned_position", "scan_position", "sample_pos", "position")
+    tube_i = _first_present(idx, "scanned_tube_code", "scan_tube_code")
 
-    if record_i is None or confirm_i is None or box_i is None or pos_i is None:
+    has_location_update = box_i is not None and pos_i is not None
+    has_tube_update = tube_i is not None
+    if record_i is None or confirm_i is None or (not has_location_update and not has_tube_update):
         raise HTTPException(
             status_code=400,
             detail=(
-                "Review file must include record_id, confirm_update, "
-                "and scanned_box/scanned_position columns"
+                "Review file must include record_id, confirm_update, and either "
+                "scanned_box/scanned_position or scanned_tube_code columns"
             ),
         )
 
@@ -229,8 +240,17 @@ async def import_scan_reconcile_review(file: UploadFile = File(...)):
         items.append(
             ApplyPositionBody(
                 record_id=record_id,
-                box=cell(row, box_i),
-                sample_pos=None if sample_pos in (None, "") else str(sample_pos).strip(),
+                box=cell(row, box_i) if has_location_update else None,
+                sample_pos=(
+                    None
+                    if not has_location_update or sample_pos in (None, "")
+                    else str(sample_pos).strip()
+                ),
+                cryobank=(
+                    None
+                    if not has_tube_update or cell(row, tube_i) in (None, "")
+                    else str(cell(row, tube_i)).strip()
+                ),
             )
         )
 

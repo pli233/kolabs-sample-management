@@ -74,9 +74,7 @@ export function ScanReconcilePage() {
 
   const tabs = result
     ? [
-        ...CATEGORIES.filter(
-          ({ key }) => (result[key] as ScanRow[]).length > 0
-        ).map((c) => {
+        ...CATEGORIES.map((c) => {
           const issueCount = (result[c.key] as ScanRow[]).length
           const reviewCount =
             c.key === 'scan_not_in_database'
@@ -96,6 +94,9 @@ export function ScanReconcilePage() {
           : []),
       ]
     : []
+  const totalIssueCount = result
+    ? CATEGORIES.reduce((sum, c) => sum + (result[c.key] as ScanRow[]).length, 0)
+    : 0
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0]
 
   useEffect(() => {
@@ -233,7 +234,7 @@ export function ScanReconcilePage() {
               <CheckCircle2 className="h-4 w-4" />
               {result.correct_matches.toLocaleString()} correct
             </Badge>
-            {tabs.length === 0 && (
+            {totalIssueCount === 0 && (
               <span className="text-muted-foreground">No discrepancies found.</span>
             )}
           </div>
@@ -250,7 +251,9 @@ export function ScanReconcilePage() {
                       'flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       activeTab?.id === t.id
                         ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        : t.count === 0
+                          ? 'text-muted-foreground/70 hover:bg-muted hover:text-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                     >
                       {t.label}
@@ -323,6 +326,44 @@ export function ScanReconcilePage() {
                     reviewColumns={toPositionConflictTable(result.position_conflicts).columns}
                     exportName="slot_conflict_review"
                     onImported={run}
+                  />
+                </div>
+              ) : activeTab?.id === 'database_not_in_scan' ? (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-lg border border-info-border bg-info-soft px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="info">In database, not scanned</Badge>
+                      <span className="text-sm text-foreground">
+                        These are DB rows in scanned boxes that were not found anywhere in the scan files.
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Use this tab to review tubes that may be missing from the physical scan, missed by the scanner,
+                      or still recorded in the database but not actually present in the scanned run.
+                    </p>
+                  </div>
+                  <GlideTable
+                    {...toTable(result.database_not_in_scan)}
+                    exportName="database_not_in_scan"
+                  />
+                </div>
+              ) : activeTab?.id === 'duplicate_scan_tubecodes' ? (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-lg border border-warning-border bg-warning px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning">Duplicate scan codes</Badge>
+                      <span className="text-sm text-foreground">
+                        These tube codes appeared more than once across the uploaded scan files.
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Review this first if counts look strange, because duplicate scan rows can affect the other
+                      categories and make the reconcile results harder to read.
+                    </p>
+                  </div>
+                  <GlideTable
+                    {...toTable(result.duplicate_scan_tubecodes)}
+                    exportName="duplicate_scan_tubecodes"
                   />
                 </div>
               ) : activeTab ? (

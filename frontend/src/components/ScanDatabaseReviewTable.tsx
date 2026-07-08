@@ -100,21 +100,22 @@ export function ScanDatabaseReviewTable({
       {mode === 'missing' && (
         <div className="rounded-lg border border-warning-border bg-warning px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="warning">Review workflow</Badge>
+            <Badge variant="warning">Scanned, not in database</Badge>
             <span className="text-sm text-foreground">
-              Compare the scanned tube to the database row, type <code>1</code> in
-              <code className="mx-1">confirm_update</code>, then use
-              <code className="mx-1">Export database updates</code>.
+              This tab shows the database row already at the same scanned
+              <code className="mx-1">project / box / position</code>. If the slot is empty in
+              the database, the database columns stay blank and the scanned details are still shown.
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            The exported update file keeps only the original database columns. Rows
-            without <code>confirm_update = 1</code> are skipped.
+            Use <code>confirm_update = 1</code> only for rows you want to update. Then:
+            <code className="mx-1">Export database updates</code> gives you a DB-shaped update file,
+            <code className="mx-1">Export review file</code> saves the review sheet itself, and
+            <code className="mx-1">Import reviewed file</code> applies the marked rows in the app.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            The tab count is the number of scanned tubes with an issue. This review
-            table expands each issue to all matching database rows for that scanned
-            box, so 1 issue can turn into many rows here.
+            Database updates from this tab replace the DB row's
+            <code className="mx-1">cryobank</code> with the scanned tube code for the rows you marked.
           </p>
         </div>
       )}
@@ -192,21 +193,58 @@ export function ScanDatabaseReviewTable({
         defaultVisible={table.columns.filter((column) => column !== 'review_id')}
         toolbarActions={({ rows: tableRows, colIndex, extras, groupKeyForRow, exportTable }) =>
           mode === 'missing' ? (
-            <ExportMenu
-              label="Export database updates"
-              onSelect={(fmt) => {
-                const updated = tableRows
-                  .filter((row) => extras[groupKeyForRow(row)]?.confirm_update === '1')
-                  .map((row) =>
-                    databaseColumns.map((column) =>
-                      column === 'cryobank'
-                        ? row[colIndex.scanned_tube_code]
-                        : row[colIndex[column]]
+            <>
+              <ExportMenu
+                label="Export database updates"
+                onSelect={(fmt) => {
+                  const updated = tableRows
+                    .filter((row) => extras[groupKeyForRow(row)]?.confirm_update === '1')
+                    .map((row) =>
+                      databaseColumns.map((column) =>
+                        column === 'cryobank'
+                          ? row[colIndex.scanned_tube_code]
+                          : row[colIndex[column]]
+                      )
                     )
-                  )
-                exportTable(databaseColumns, updated, 'scan_database_updates', fmt).catch(() => {})
-              }}
-            />
+                  exportTable(databaseColumns, updated, 'scan_database_updates', fmt).catch(() => {})
+                }}
+              />
+              <ExportMenu
+                label="Export review file"
+                onSelect={(fmt) => {
+                  const reviewRows = tableRows.map((row) => [
+                    ...reviewExportColumns.map((column) => row[colIndex[column]] ?? null),
+                    extras[groupKeyForRow(row)]?.confirm_update ?? '',
+                  ])
+                  exportTable(
+                    [...reviewExportColumns, 'confirm_update'],
+                    reviewRows,
+                    exportName ?? 'scan_review',
+                    fmt
+                  ).catch(() => {})
+                }}
+              />
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".xlsx,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.currentTarget.value = ''
+                  if (file) void importReviewFile(file)
+                }}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => inputRef.current?.click()}
+                disabled={importState.type === 'busy'}
+              >
+                <FileUp className="h-4 w-4" />
+                Import reviewed file
+              </Button>
+            </>
           ) : mode === 'wrong_location' ? (
             <>
               <ExportMenu
