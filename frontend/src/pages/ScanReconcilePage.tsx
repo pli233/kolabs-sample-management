@@ -30,36 +30,6 @@ function toTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
   return { columns, rows: rows.map((r) => columns.map((c) => r[c])) }
 }
 
-function toPositionConflictTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
-  const columns = [
-    'record_id',
-    'db_tube_code',
-    'db_project',
-    'db_box',
-    'db_position',
-    'scanned_tube_code',
-    'scanned_project',
-    'scanned_box',
-    'scanned_position',
-    'scanned_source',
-  ]
-  return {
-    columns,
-    rows: rows.map((row) => [
-      row.record_id ?? null,
-      row.expected_cryobank ?? null,
-      row.expected_project ?? null,
-      row.expected_box ?? null,
-      row.expected_position ?? null,
-      row.tube_code ?? null,
-      row.project ?? null,
-      row.box ?? null,
-      row.position ?? null,
-      row.source ?? null,
-    ]),
-  }
-}
-
 export function ScanReconcilePage() {
   const [files, setFiles] = usePersistentState<File[]>('scan.files', [])
   const [result, setResult] = usePersistentState<ScanResult | null>(
@@ -81,6 +51,8 @@ export function ScanReconcilePage() {
               ? result.scan_not_in_database_review.length
               : c.key === 'wrong_location'
                 ? result.wrong_location_review.length
+                : c.key === 'position_conflicts'
+                  ? result.position_conflicts_review.length
                 : issueCount
           return {
             id: c.key as string,
@@ -309,21 +281,9 @@ export function ScanReconcilePage() {
                     </p>
                   </div>
                   <ScanDatabaseReviewTable
-                    rows={result.position_conflicts.map((row) => ({
-                      record_id: row.record_id,
-                      db_tube_code: row.expected_cryobank,
-                      db_project: row.expected_project,
-                      db_box: row.expected_box,
-                      db_position: row.expected_position,
-                      scanned_tube_code: row.tube_code,
-                      scanned_project: row.project,
-                      scanned_box: row.box,
-                      scanned_position: row.position,
-                      scanned_source: row.source,
-                    }))}
-                    databaseColumns={[]}
+                    rows={result.position_conflicts_review}
+                    databaseColumns={result.databaseColumns}
                     mode="slot_conflict"
-                    reviewColumns={toPositionConflictTable(result.position_conflicts).columns}
                     exportName="slot_conflict_review"
                     onImported={run}
                   />

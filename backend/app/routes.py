@@ -817,6 +817,9 @@ async def scan_reconcile_route(
     result["wrong_location_review"] = scan.build_wrong_location_review(
         db, result["wrong_location"]
     )
+    result["position_conflicts_review"] = scan.build_position_conflict_review(
+        db, result["position_conflicts"]
+    )
 
     if format == "xlsx":
         sheets: dict[str, tuple[list[str], list[list]]] = {}

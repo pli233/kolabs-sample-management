@@ -70,7 +70,14 @@ export function ScanDatabaseReviewTable({
                   'scanned_position',
                   'scanned_source',
                 ]
-              : ['review_id', 'scanned_box', 'scanned_position', 'scanned_source']
+              : [
+                  'review_id',
+                  'scanned_tube_code',
+                  'scanned_project',
+                  'scanned_box',
+                  'scanned_position',
+                  'scanned_source',
+                ]
           ),
     [rows, databaseColumns, mode, reviewColumns]
   )
@@ -188,10 +195,20 @@ export function ScanDatabaseReviewTable({
             ? 'scan_review'
             : exportName ?? (mode === 'wrong_location' ? 'wrong_location_review' : 'slot_conflict_review')
         }
-        pickGroupBy={mode === 'missing' ? 'review_id' : undefined}
-        pickExtras={mode === 'missing' || mode === 'wrong_location' ? ['confirm_update'] : undefined}
+        pickGroupBy={
+          mode === 'missing'
+            ? 'review_id'
+            : mode === 'wrong_location' || mode === 'slot_conflict'
+              ? 'record_id'
+              : undefined
+        }
+        pickExtras={
+          mode === 'missing' || mode === 'wrong_location' || mode === 'slot_conflict'
+            ? ['confirm_update']
+            : undefined
+        }
         defaultVisible={table.columns.filter((column) => column !== 'review_id')}
-        toolbarActions={({ rows: tableRows, colIndex, extras, groupKeyForRow, exportTable }) =>
+        toolbarActions={({ rows: tableRows, colIndex, picks, extras, groupKeyForRow, exportTable }) =>
           mode === 'missing' ? (
             <>
               <ExportMenu
@@ -251,7 +268,7 @@ export function ScanDatabaseReviewTable({
                 label="Export database updates"
                 onSelect={(fmt) => {
                   const updated = tableRows
-                    .filter((row) => extras[groupKeyForRow(row)]?.confirm_update === '1')
+                    .filter((row) => picks.has(row))
                     .map((row) =>
                       databaseColumns.map((column) => {
                         if (column === 'box') return row[colIndex.scanned_box]
@@ -306,11 +323,31 @@ export function ScanDatabaseReviewTable({
           ) : (
             <>
               <ExportMenu
+                label="Export database updates"
+                onSelect={(fmt) => {
+                  const updated = tableRows
+                    .filter((row) => extras[groupKeyForRow(row)]?.confirm_update === '1')
+                    .map((row) =>
+                      databaseColumns.map((column) =>
+                        column === 'cryobank'
+                          ? row[colIndex.scanned_tube_code]
+                          : row[colIndex[column]]
+                      )
+                    )
+                  exportTable(
+                    databaseColumns,
+                    updated,
+                    'slot_conflict_updates',
+                    fmt
+                  ).catch(() => {})
+                }}
+              />
+              <ExportMenu
                 label="Export review file"
                 onSelect={(fmt) => {
                   const reviewRows = tableRows.map((row) => [
                     ...reviewExportColumns.map((column) => row[colIndex[column]] ?? null),
-                    '',
+                    extras[groupKeyForRow(row)]?.confirm_update ?? '',
                   ])
                   exportTable(
                     [...reviewExportColumns, 'confirm_update'],

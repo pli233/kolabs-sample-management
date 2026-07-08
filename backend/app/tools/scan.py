@@ -39,7 +39,7 @@ _ALIASES = {
 }
 
 INVALID_CODES = {"", "noread", "notube", "na", "none", "empty", "nan"}
-_RACK_RE = re.compile(r"(\d+)\s*box\s*(\d+)", re.IGNORECASE)
+_RACK_RE = re.compile(r"^\s*(.*?)\s*box\s*0*([0-9]+)\s*$", re.IGNORECASE)
 
 
 def _key(h: str) -> str:
@@ -74,7 +74,12 @@ def _read_table(filename: str, data: bytes) -> list[list]:
 def _project_box(rackid: str) -> tuple[str, str]:
     m = _RACK_RE.search(str(rackid or ""))
     if m:
-        return f"L{int(m.group(1))}", str(int(m.group(2)))
+        raw_project = re.sub(r"\s+", "", m.group(1) or "")
+        if raw_project.isdigit():
+            project = f"L{int(raw_project)}"
+        else:
+            project = raw_project.upper()
+        return project, str(int(m.group(2)))
     return "", ""
 
 
@@ -196,12 +201,24 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
             normalize_position(cell(row, pos_i)) or "",
         )
 
+    def db_box_pos(row: list) -> tuple[str, str]:
+        return (
+            text(cell(row, box_i)),
+            normalize_position(cell(row, pos_i)) or "",
+        )
+
     def row_to_dict(row: list) -> dict:
         return {column: cell(row, i) for i, column in enumerate(cols)}
 
     def slot_key_from_scan(rec: dict) -> tuple[str, str, str]:
         return (
             text(rec.get("project")),
+            text(rec.get("box")),
+            normalize_position(rec.get("position")) or "",
+        )
+
+    def box_pos_key_from_scan(rec: dict) -> tuple[str, str]:
+        return (
             text(rec.get("box")),
             normalize_position(rec.get("position")) or "",
         )
@@ -225,9 +242,11 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
 
     db_by_code: dict[str, list[list]] = {}
     db_by_slot: dict[tuple[str, str, str], list[list]] = {}
+    db_by_box_pos: dict[tuple[str, str], list[list]] = {}
     for row in db_sheet["rows"]:
         slot = db_slot(row)
         db_by_slot.setdefault(slot, []).append(row)
+        db_by_box_pos.setdefault(db_box_pos(row), []).append(row)
         code = code_text(cell(row, cb_i))
         if is_valid_code(code):
             db_by_code.setdefault(code, []).append(row)
@@ -245,12 +264,14 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
     scanned_valid_codes: set[str] = set()
     observed_slots: dict[tuple[str, str, str], list[dict]] = {}
     observed_boxes: set[tuple[str, str]] = set()
+    observed_box_numbers: set[str] = set()
     matched_db_record_ids: set[str] = set()
 
     for rec in records:
         slot = slot_key_from_scan(rec)
         observed_slots.setdefault(slot, []).append(rec)
         observed_boxes.add((text(rec.get("project")), text(rec.get("box"))))
+        observed_box_numbers.add(text(rec.get("box")))
 
         code = code_text(rec.get("tube_code"))
         if not is_valid_code(code):
@@ -259,8 +280,13 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
         scanned_valid_codes.add(code)
         seen_codes[code] = seen_codes.get(code, 0) + 1
         slot_rows = db_by_slot.get(slot, [])
+        if not slot_rows:
+            slot_rows = db_by_box_pos.get(box_pos_key_from_scan(rec), [])
         code_rows = db_by_code.get(code, [])
         exact = next((row for row in code_rows if db_slot(row) == slot), None)
+        if exact is None:
+            scan_box_pos = box_pos_key_from_scan(rec)
+            exact = next((row for row in code_rows if db_box_pos(row) == scan_box_pos), None)
 
         if exact is not None:
             out["correct_matches"] += 1
@@ -313,7 +339,7 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
             out["scan_not_in_database"].append(rec)
 
     for slot, rows_at_slot in db_by_slot.items():
-        if (slot[0], slot[1]) not in observed_boxes:
+        if (slot[0], slot[1]) not in observed_boxes and slot[1] not in observed_box_numbers:
             continue
         for row in rows_at_slot:
             row_code = code_text(cell(row, cb_i))
@@ -409,6 +435,41 @@ def build_wrong_location_review(db_sheet: dict, wrong_rows: list[dict]) -> list[
             {
                 **db_row_dict(row),
                 "review_id": f"wrong-{i}",
+                "scanned_tube_code": item.get("tube_code"),
+                "scanned_project": item.get("project"),
+                "scanned_box": item.get("box"),
+                "scanned_position": item.get("position"),
+                "scanned_source": item.get("source"),
+            }
+        )
+    return out
+
+
+def build_position_conflict_review(db_sheet: dict, conflict_rows: list[dict]) -> list[dict]:
+    """Return full-database rows with scanned-slot helpers for slot conflicts."""
+    columns = db_sheet["columns"]
+    idx = {c: i for i, c in enumerate(columns)}
+    record_i = idx.get("record_id")
+
+    def db_row_dict(row: list) -> dict:
+        return {column: row[i] if i < len(row) else None for i, column in enumerate(columns)}
+
+    by_record = {}
+    for row in db_sheet["rows"]:
+        if record_i is not None and record_i < len(row):
+            by_record[str(row[record_i])] = row
+
+    out: list[dict] = []
+    for i, item in enumerate(conflict_rows):
+        row = by_record.get(str(item.get("record_id", "")))
+        if row is None:
+            continue
+        out.append(
+            {
+                **db_row_dict(row),
+                "review_id": f"conflict-{i}",
+                "scanned_tube_code": item.get("tube_code"),
+                "scanned_project": item.get("project"),
                 "scanned_box": item.get("box"),
                 "scanned_position": item.get("position"),
                 "scanned_source": item.get("source"),

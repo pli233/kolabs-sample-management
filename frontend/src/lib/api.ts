@@ -186,6 +186,7 @@ export interface ScanResult {
   wrong_location_review: ScanRow[]
   database_not_in_scan: ScanRow[]
   position_conflicts: ScanRow[]
+  position_conflicts_review: ScanRow[]
   duplicate_scan_tubecodes: ScanRow[]
   correct_matches: number
   fileSummary: ScanRow[]
