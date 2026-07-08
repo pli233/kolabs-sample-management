@@ -14,6 +14,7 @@ def test_parse_real_xls():
     sample = next(r for r in records if r["tube_code"] and r["tube_code"] != "No Tube")
     assert sample["project"] == "L37"
     assert sample["box"] == "716"
+    assert sample["rack_id"] == "37BOX716"
     assert len(sample["position"]) == 3  # e.g. A02
 
 
@@ -35,18 +36,21 @@ def _rec(code, pos):
 
 def test_reconcile_matches_on_tube_code_only():
     records = [
-        _rec("NTBI1", "A01"),   # correct (code in DB)
-        _rec("NTBI2", "A01"),   # correct too — wrong slot no longer matters
-        _rec("NTBX9", "A09"),   # not in database
+        _rec("NTBI1", "A01"),   # correct
+        _rec("NTBI2", "A01"),   # code exists but at wrong position
+        _rec("NTBX9", "A02"),   # not in DB and conflicts with NTBI2's slot
         _rec("NTBX9", "A09"),   # duplicate
     ]
     out = reconcile(_db(), records)
-    assert out["correct_matches"] == 2  # location ignored; both codes are in the DB
-    assert len(out["scan_not_in_database"]) == 2  # NTBX9 twice
-    # Location-based categories are no longer computed.
-    assert out["wrong_location"] == []
-    assert out["position_conflicts"] == []
-    assert out["database_not_in_scan"] == []  # NTBI3 unscanned, but not reported
+    assert out["correct_matches"] == 1
+    assert len(out["wrong_location"]) == 1
+    assert out["wrong_location"][0]["tube_code"] == "NTBI2"
+    assert out["wrong_location"][0]["expected_position"] == "A02"
+    assert len(out["position_conflicts"]) == 2
+    assert any(r["tube_code"] == "NTBX9" and r["expected_cryobank"] == "NTBI2" for r in out["position_conflicts"])
+    assert len(out["scan_not_in_database"]) == 1  # only the non-conflicting A09 row
+    assert len(out["database_not_in_scan"]) == 1  # NTBI3 was not scanned anywhere
+    assert out["database_not_in_scan"][0]["cryobank"] == "NTBI3"
     assert any(
         d["tube_code"] == "NTBX9" and d["count"] == 2
         for d in out["duplicate_scan_tubecodes"]

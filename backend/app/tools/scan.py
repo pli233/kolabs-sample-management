@@ -30,6 +30,12 @@ _ALIASES = {
     "locationcolumn": "col",
     "column": "col",
     "col": "col",
+    "aliquotid": "typed_aliquot_id",
+    "aliquot": "typed_aliquot_id",
+    "typedaliquotid": "typed_aliquot_id",
+    "extraid": "typed_extra_id",
+    "typedextraid": "typed_extra_id",
+    "trackid": "typed_extra_id",
 }
 
 INVALID_CODES = {"", "noread", "notube", "na", "none", "empty", "nan"}
@@ -73,7 +79,7 @@ def _project_box(rackid: str) -> tuple[str, str]:
 
 
 def parse_scan(filename: str, data: bytes) -> list[dict]:
-    """Return scan records: {tube_code, project, box, position, source}."""
+    """Return normalized scan records with rack/project/box/position metadata."""
     table = _read_table(filename, data)
     if not table:
         return []
@@ -104,7 +110,10 @@ def parse_scan(filename: str, data: bytes) -> list[dict]:
                 "tube_code": code,
                 "project": project,
                 "box": box,
+                "rack_id": "" if rackid is None else str(rackid).strip(),
                 "position": position or "",
+                "typed_aliquot_id": "" if get("typed_aliquot_id") is None else str(get("typed_aliquot_id")).strip(),
+                "typed_extra_id": "" if get("typed_extra_id") is None else str(get("typed_extra_id")).strip(),
                 "source": filename,
             }
         )
@@ -162,22 +171,66 @@ def dedup_files(by_file: dict[str, list[dict]]) -> dict:
 
 
 def reconcile(db_sheet: dict, records: list[dict]) -> dict:
-    """Categorize scan records against the database by tube_code only.
-
-    A scanned tube is correct if its code (the DB `cryobank` column) exists in
-    the active feed; the scanned rack/box/position are not used for matching.
-    The location-based categories (wrong_location, position_conflicts,
-    database_not_in_scan) are kept as empty lists for output/export/UI
-    compatibility.
-    """
+    """Categorize scan records against the database by code and position."""
     cols = db_sheet["columns"]
     idx = {c: i for i, c in enumerate(cols)}
     cb_i = idx.get("cryobank")
+    proj_i = idx.get("project")
+    box_i = idx.get("box")
+    pos_i = idx.get("sample_pos")
+    record_i = idx.get("record_id")
 
-    db_codes: set[str] = set()
-    for r in db_sheet["rows"]:
-        if cb_i is not None and r[cb_i]:
-            db_codes.add(str(r[cb_i]).strip().upper())
+    def cell(row: list, i: int | None):
+        return row[i] if i is not None and i < len(row) else None
+
+    def text(value) -> str:
+        return "" if value is None else str(value).strip()
+
+    def code_text(value) -> str:
+        return text(value).upper()
+
+    def db_slot(row: list) -> tuple[str, str, str]:
+        return (
+            text(cell(row, proj_i)),
+            text(cell(row, box_i)),
+            normalize_position(cell(row, pos_i)) or "",
+        )
+
+    def row_to_dict(row: list) -> dict:
+        return {column: cell(row, i) for i, column in enumerate(cols)}
+
+    def slot_key_from_scan(rec: dict) -> tuple[str, str, str]:
+        return (
+            text(rec.get("project")),
+            text(rec.get("box")),
+            normalize_position(rec.get("position")) or "",
+        )
+
+    def choose_db_row(candidates: list[list], rec: dict) -> list | None:
+        if not candidates:
+            return None
+        project = text(rec.get("project"))
+        box = text(rec.get("box"))
+        position = normalize_position(rec.get("position")) or ""
+        ranked = sorted(
+            candidates,
+            key=lambda row: (
+                0 if text(cell(row, proj_i)) == project else 1,
+                0 if text(cell(row, box_i)) == box else 1,
+                0 if (normalize_position(cell(row, pos_i)) or "") == position else 1,
+                text(cell(row, record_i)),
+            ),
+        )
+        return ranked[0]
+
+    db_by_code: dict[str, list[list]] = {}
+    db_by_slot: dict[tuple[str, str, str], list[list]] = {}
+    for row in db_sheet["rows"]:
+        slot = db_slot(row)
+        db_by_slot.setdefault(slot, []).append(row)
+        code = code_text(cell(row, cb_i))
+        if is_valid_code(code):
+            db_by_code.setdefault(code, []).append(row)
 
     out = {
         "scan_not_in_database": [],
@@ -189,14 +242,85 @@ def reconcile(db_sheet: dict, records: list[dict]) -> dict:
     }
 
     seen_codes: dict[str, int] = {}
-    valid = [r for r in records if is_valid_code(r["tube_code"])]
-    for rec in valid:
-        code = rec["tube_code"].upper()
+    scanned_valid_codes: set[str] = set()
+    observed_slots: dict[tuple[str, str, str], list[dict]] = {}
+    observed_boxes: set[tuple[str, str]] = set()
+    matched_db_record_ids: set[str] = set()
+
+    for rec in records:
+        slot = slot_key_from_scan(rec)
+        observed_slots.setdefault(slot, []).append(rec)
+        observed_boxes.add((text(rec.get("project")), text(rec.get("box"))))
+
+        code = code_text(rec.get("tube_code"))
+        if not is_valid_code(code):
+            continue
+
+        scanned_valid_codes.add(code)
         seen_codes[code] = seen_codes.get(code, 0) + 1
-        if code in db_codes:
+        slot_rows = db_by_slot.get(slot, [])
+        code_rows = db_by_code.get(code, [])
+        exact = next((row for row in code_rows if db_slot(row) == slot), None)
+
+        if exact is not None:
             out["correct_matches"] += 1
+            matched_db_record_ids.add(text(cell(exact, record_i)))
+            continue
+
+        if code_rows:
+            chosen = choose_db_row(code_rows, rec)
+            if chosen is not None:
+                matched_db_record_ids.add(text(cell(chosen, record_i)))
+                out["wrong_location"].append(
+                    {
+                        **rec,
+                        "record_id": cell(chosen, record_i),
+                        "expected_project": cell(chosen, proj_i),
+                        "expected_box": cell(chosen, box_i),
+                        "expected_position": cell(chosen, pos_i),
+                        "expected_cryobank": cell(chosen, cb_i),
+                    }
+                )
+            if slot_rows:
+                for row in slot_rows:
+                    row_code = code_text(cell(row, cb_i))
+                    if is_valid_code(row_code) and row_code != code:
+                        out["position_conflicts"].append(
+                            {
+                                **rec,
+                                "record_id": cell(row, record_i),
+                                "expected_project": cell(row, proj_i),
+                                "expected_box": cell(row, box_i),
+                                "expected_position": cell(row, pos_i),
+                                "expected_cryobank": cell(row, cb_i),
+                            }
+                        )
+        elif slot_rows:
+            for row in slot_rows:
+                row_code = code_text(cell(row, cb_i))
+                if is_valid_code(row_code):
+                    out["position_conflicts"].append(
+                        {
+                            **rec,
+                            "record_id": cell(row, record_i),
+                            "expected_project": cell(row, proj_i),
+                            "expected_box": cell(row, box_i),
+                            "expected_position": cell(row, pos_i),
+                            "expected_cryobank": cell(row, cb_i),
+                        }
+                    )
         else:
             out["scan_not_in_database"].append(rec)
+
+    for slot, rows_at_slot in db_by_slot.items():
+        if (slot[0], slot[1]) not in observed_boxes:
+            continue
+        for row in rows_at_slot:
+            row_code = code_text(cell(row, cb_i))
+            if not is_valid_code(row_code):
+                continue
+            if row_code not in scanned_valid_codes:
+                out["database_not_in_scan"].append(row_to_dict(row))
 
     out["duplicate_scan_tubecodes"] = [
         {"tube_code": c, "count": n} for c, n in seen_codes.items() if n > 1

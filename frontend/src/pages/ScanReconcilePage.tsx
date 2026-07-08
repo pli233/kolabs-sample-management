@@ -88,8 +88,26 @@ export function ScanReconcilePage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Scan Reconcile"
-        description="Reconcile physical-rack scans against the active feed, matching by tube code. Flags scanned tubes not in the feed and duplicate scans."
+        description="Reconcile physical-rack scans against the active feed using tube code plus scanned project, box, and position. Review missing tubes, wrong locations, position conflicts, and database rows missing from the scan."
       />
+
+      <div className="rounded-lg border border-info-border bg-info-soft px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="info">Scan file format</Badge>
+          <span className="text-sm text-foreground">
+            Include <code>RackID</code> and <code>TubeCode</code>, plus either a
+            full <code>Position</code> column such as <code>A01</code> or
+            <code>LocationRow</code> + <code>LocationColumn</code>.
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Rack IDs should look like <code>37BOX716</code> or
+          <code className="mx-1">37 BOX 716</code>. The app reads that as project
+          <code className="mx-1">L37</code> and box
+          <code className="mx-1">716</code>. Optional extra columns such as typed
+          aliquot or track IDs are kept when present.
+        </p>
+      </div>
 
       <div className="grid gap-4 rounded-lg border border-border bg-card p-3 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <label
@@ -110,6 +128,9 @@ export function ScanReconcilePage() {
           </span>
           <span className="text-sm text-muted-foreground">
             .csv / .xlsx / .xls, multiple files
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Required fields: RackID + TubeCode + Position or Row/Column
           </span>
           <input
             type="file"
