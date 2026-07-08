@@ -255,7 +255,6 @@ export function ScanReconcilePage() {
                   rows={result.wrong_location_review}
                   databaseColumns={result.databaseColumns}
                   mode="wrong_location"
-                  onImported={run}
                 />
               ) : activeTab?.id === 'scan_not_in_database' ? (
                 <ScanDatabaseReviewTable
@@ -285,7 +284,6 @@ export function ScanReconcilePage() {
                     databaseColumns={result.databaseColumns}
                     mode="slot_conflict"
                     exportName="slot_conflict_review"
-                    onImported={run}
                   />
                 </div>
               ) : activeTab?.id === 'database_not_in_scan' ? (

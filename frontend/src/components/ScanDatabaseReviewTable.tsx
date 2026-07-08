@@ -1,15 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
-import { FileUp } from 'lucide-react'
-import {
-  api,
-  type Cell,
-  type ReconcileReviewImportResult,
-  type ScanRow,
-} from '@/lib/api'
+import { useMemo } from 'react'
+import { type Cell, type ScanRow } from '@/lib/api'
 import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 
 function toOrderedTable(
   rows: ScanRow[],
@@ -34,23 +27,13 @@ export function ScanDatabaseReviewTable({
   mode,
   reviewColumns,
   exportName,
-  onImported,
 }: {
   rows: ScanRow[]
   databaseColumns: string[]
   mode: 'missing' | 'wrong_location' | 'slot_conflict'
   reviewColumns?: string[]
   exportName?: string
-  onImported?: () => void | Promise<void>
 }) {
-  const [importState, setImportState] = useState<
-    | { type: 'idle' }
-    | { type: 'busy' }
-    | { type: 'done'; result: ReconcileReviewImportResult }
-    | { type: 'error'; message: string }
-  >({ type: 'idle' })
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
   const table = useMemo(
     () =>
       reviewColumns
@@ -88,20 +71,6 @@ export function ScanDatabaseReviewTable({
     [table.columns]
   )
 
-  async function importReviewFile(file: File) {
-    setImportState({ type: 'busy' })
-    try {
-      const result = await api.importReconcileReview(file)
-      setImportState({ type: 'done', result })
-      await onImported?.()
-    } catch (err) {
-      setImportState({
-        type: 'error',
-        message: (err as Error).message || 'Import failed',
-      })
-    }
-  }
-
   return (
     <div className="flex flex-col gap-3">
       {mode === 'missing' && (
@@ -117,8 +86,7 @@ export function ScanDatabaseReviewTable({
           <p className="mt-2 text-xs text-muted-foreground">
             Use <code>confirm_update = 1</code> only for rows you want to update. Then:
             <code className="mx-1">Export database updates</code> gives you a DB-shaped update file,
-            <code className="mx-1">Export review file</code> saves the review sheet itself, and
-            <code className="mx-1">Import reviewed file</code> applies the marked rows in the app.
+            <code className="mx-1">Export review file</code> saves the review sheet itself.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Database updates from this tab replace the DB row's
@@ -133,8 +101,8 @@ export function ScanDatabaseReviewTable({
             <Badge variant="info">Wrong location review</Badge>
             <span className="text-sm text-foreground">
               Export the review file, type <code>1</code> in
-              <code className="mx-1">confirm_update</code> for rows to fix, then import
-              it back to apply the scanned location to the active feed.
+              <code className="mx-1">confirm_update</code> for rows to fix, then export
+              the database updates file when you are ready.
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -147,7 +115,7 @@ export function ScanDatabaseReviewTable({
             <code className="mx-1">confirm_update</code> for the rows you want, then use
             <code className="mx-1">Export database updates</code> if you need a ready-to-use
             corrected Excel, or <code className="mx-1">Export review file</code> if you want
-            to save the review sheet itself and import it later.
+            to save the review sheet itself.
           </p>
         </div>
       )}
@@ -158,32 +126,15 @@ export function ScanDatabaseReviewTable({
             <Badge variant="warning">DB slot conflict review</Badge>
             <span className="text-sm text-foreground">
               Export the review file, mark the rows you want with
-              <code className="mx-1">confirm_update = 1</code>, then import the file to
-              move those DB records to the scanned location.
+              <code className="mx-1">confirm_update = 1</code>, then export the database
+              updates file to replace the DB tube code with the scanned tube code.
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             This tab is for DB rows whose current slot conflicts with the scanned slot.
-            Review carefully before updating, because importing the reviewed file will move
-            the DB row to the scanned <code className="mx-1">box</code> and
-            <code className="mx-1">position</code>.
+            Review carefully before updating, because the exported update file will
+            change the DB row's <code className="mx-1">cryobank</code> to the scanned tube code.
           </p>
-        </div>
-      )}
-
-      {importState.type !== 'idle' && (
-        <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm">
-          {importState.type === 'busy' ? (
-            <span className="text-muted-foreground">Importing reviewed file...</span>
-          ) : importState.type === 'done' ? (
-            <span className="text-foreground">
-              Imported review file. Applied {importState.result.applied} of{' '}
-              {importState.result.flagged} flagged row
-              {importState.result.flagged === 1 ? '' : 's'}.
-            </span>
-          ) : (
-            <span className="text-destructive">{importState.message}</span>
-          )}
         </div>
       )}
 
@@ -241,26 +192,6 @@ export function ScanDatabaseReviewTable({
                   ).catch(() => {})
                 }}
               />
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  e.currentTarget.value = ''
-                  if (file) void importReviewFile(file)
-                }}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => inputRef.current?.click()}
-                disabled={importState.type === 'busy'}
-              >
-                <FileUp className="h-4 w-4" />
-                Import reviewed file
-              </Button>
             </>
           ) : mode === 'wrong_location' ? (
             <>
@@ -299,26 +230,6 @@ export function ScanDatabaseReviewTable({
                   ).catch(() => {})
                 }}
               />
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  e.currentTarget.value = ''
-                  if (file) void importReviewFile(file)
-                }}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => inputRef.current?.click()}
-                disabled={importState.type === 'busy'}
-              >
-                <FileUp className="h-4 w-4" />
-                Import reviewed file
-              </Button>
             </>
           ) : (
             <>
@@ -357,26 +268,6 @@ export function ScanDatabaseReviewTable({
                   ).catch(() => {})
                 }}
               />
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  e.currentTarget.value = ''
-                  if (file) void importReviewFile(file)
-                }}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => inputRef.current?.click()}
-                disabled={importState.type === 'busy'}
-              >
-                <FileUp className="h-4 w-4" />
-                Import reviewed file
-              </Button>
             </>
           )
         }

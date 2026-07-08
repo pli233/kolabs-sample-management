@@ -49,7 +49,11 @@ def qc_sample(
     preferred_freezer: str | None = None,
     location_overrides: dict[str, dict] | None = None,
 ) -> dict:
-    """Return sampled tube rows plus per-box resolution/ambiguity metadata."""
+    """Return sampled tube rows plus per-box summary metadata.
+
+    Ambiguous box locations no longer block sampling. We sample from all rows in
+    the box, optionally narrowed by preferred freezer when it yields matches.
+    """
     columns: list[str] = sheet["columns"]
     rows: list[list] = sheet["rows"]
     idx = {c: i for i, c in enumerate(columns)}
@@ -76,12 +80,8 @@ def qc_sample(
             "count": len(rows_for_location),
         }
 
-    def location_matches(row: list, target: dict) -> bool:
-        return all(cell(row, column) == target.get(column) for column in LOCATION_COLS)
-
     sampled: list[list] = []
     per_box_counts: list[dict] = []
-    ambiguous_boxes: list[dict] = []
     for box in boxes:
         box_target = normalize_box(box)
         candidates = [
@@ -98,76 +98,34 @@ def qc_sample(
             grouped.setdefault(location_key(row), []).append(row)
 
         locations = list(grouped.values())
-        chosen_rows: list[list] | None = None
         status = "ok"
-        box_override = overrides.get(box)
-
-        if box_override:
-            override_matches = [
-                location_rows
-                for location_rows in locations
-                if location_matches(location_rows[0], box_override)
+        chosen_rows = candidates
+        if preferred:
+            preferred_rows = [
+                row for row in candidates
+                if freezer_value(row).lower() == preferred.lower()
             ]
-            if len(override_matches) == 1:
-                chosen_rows = override_matches[0]
-                status = "resolved_by_location_override"
-            else:
-                status = "location_override_no_match"
-        elif len(locations) == 1:
-            chosen_rows = locations[0]
-        elif len(locations) > 1 and preferred:
-            preferred_locations = [
-                location_rows
-                for location_rows in locations
-                if freezer_value(location_rows[0]).lower() == preferred.lower()
-            ]
-            if len(preferred_locations) == 1:
-                chosen_rows = preferred_locations[0]
+            if preferred_rows:
+                chosen_rows = preferred_rows
                 status = "resolved_by_preferred_freezer"
-            elif len(preferred_locations) > 1:
-                status = "ambiguous_in_preferred_freezer"
-            else:
-                status = "preferred_freezer_no_match"
-        elif len(locations) > 1:
-            status = "ambiguous"
 
-        take: list[list] = []
-        if chosen_rows is not None:
-            rng = random.Random(f"{seed}-{box}")
-            take = (
-                chosen_rows
-                if len(chosen_rows) <= per_box
-                else rng.sample(chosen_rows, per_box)
-            )
-            sampled.extend(take)
-        else:
-            ambiguous_boxes.append(
-                {
-                    "box": box,
-                    "status": status,
-                    "preferred_freezer": preferred or None,
-                    "selected_location": box_override,
-                    "locations": [
-                        location_payload(location_rows)
-                        for location_rows in sorted(
-                            locations,
-                            key=lambda item: repr(location_key(item[0])),
-                        )
-                    ],
-                }
-            )
+        rng = random.Random(f"{seed}-{box}")
+        take = (
+            chosen_rows
+            if len(chosen_rows) <= per_box
+            else rng.sample(chosen_rows, per_box)
+        )
+        sampled.extend(take)
 
         summary = {
             "box": box,
             "available": len(candidates),
             "sampled": len(take),
             "status": status,
+            "locationCount": len(locations),
         }
-        if chosen_rows is not None:
-            summary["location"] = location_payload(chosen_rows)["location"]
-            summary["locationCount"] = 1
-        else:
-            summary["locationCount"] = len(locations)
+        if len(locations) == 1:
+            summary["location"] = location_payload(locations[0])["location"]
         per_box_counts.append(summary)
 
     return {
@@ -177,7 +135,7 @@ def qc_sample(
         "preferredFreezer": preferred or None,
         "locationColumns": LOCATION_COLS,
         "boxes": per_box_counts,
-        "ambiguousBoxes": ambiguous_boxes,
+        "ambiguousBoxes": [],
         "columns": columns,
         "rows": sampled,
     }

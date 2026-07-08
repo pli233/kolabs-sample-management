@@ -38,7 +38,7 @@ def test_sample_takes_all_when_fewer_than_n():
     assert r["boxes"][0]["status"] == "ok"
 
 
-def test_ambiguous_box_returns_candidate_locations():
+def test_ambiguous_box_still_returns_sample_rows():
     sheet = {
         "columns": ["project", "box", "freezer", "rack", "drawer", "box_pos", "sample_pos", "record_id"],
         "rows": [
@@ -49,11 +49,10 @@ def test_ambiguous_box_returns_candidate_locations():
 
     result = qc_sample(sheet, "L37", ["700"], 5, seed=1)
 
-    assert result["rows"] == []
-    assert result["boxes"][0]["status"] == "ambiguous"
+    assert len(result["rows"]) == 2
+    assert result["boxes"][0]["status"] == "ok"
     assert result["boxes"][0]["locationCount"] == 2
-    assert result["ambiguousBoxes"][0]["box"] == "700"
-    assert len(result["ambiguousBoxes"][0]["locations"]) == 2
+    assert result["ambiguousBoxes"] == []
 
 
 def test_preferred_freezer_resolves_ambiguous_box():
@@ -70,32 +69,4 @@ def test_preferred_freezer_resolves_ambiguous_box():
 
     assert len(result["rows"]) == 2
     assert result["boxes"][0]["status"] == "resolved_by_preferred_freezer"
-    assert result["boxes"][0]["location"]["freezer"] == "2"
-    assert result["ambiguousBoxes"] == []
-
-
-def test_location_override_resolves_specific_candidate():
-    sheet = {
-        "columns": ["project", "box", "freezer", "shelf", "rack", "drawer", "box_pos", "sample_pos", "record_id"],
-        "rows": [
-            ["L37", "700", "1", None, "A", "1", "1", "A01", 1],
-            ["L37", "700", "2", None, "B", "2", "2", "A02", 2],
-            ["L37", "700", "2", None, "B", "2", "2", "A03", 3],
-        ],
-    }
-
-    result = qc_sample(
-        sheet,
-        "L37",
-        ["700"],
-        5,
-        seed=1,
-        location_overrides={
-            "700": {"freezer": "2", "shelf": None, "rack": "B", "drawer": "2", "box_pos": "2"}
-        },
-    )
-
-    assert len(result["rows"]) == 2
-    assert result["boxes"][0]["status"] == "resolved_by_location_override"
-    assert result["boxes"][0]["location"]["freezer"] == "2"
     assert result["ambiguousBoxes"] == []

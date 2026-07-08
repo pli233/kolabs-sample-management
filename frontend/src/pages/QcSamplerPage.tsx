@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Dices, MapPinned } from 'lucide-react'
-import { api, type Cell, type QcParams, type QcResult } from '@/lib/api'
+import { Dices } from 'lucide-react'
+import { api, type QcParams, type QcResult } from '@/lib/api'
 import { usePersistentState } from '@/lib/persist'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,17 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { GlideTable } from '@/components/GlideTable'
 import { EmptyState, InlineError, ResultsSkeleton } from '@/components/Feedback'
 import { PageHeader } from '@/components/PageHeader'
-import { DEFAULT_VISIBLE } from '@/lib/table'
-
-type LocationMap = Record<string, Cell>
-type LocationOverrideMap = Record<string, LocationMap>
-
-function formatLocation(location: LocationMap | undefined, columns: string[]) {
-  if (!location) return '—'
-  return columns
-    .map((column) => `${column} ${String(location[column] ?? '—')}`)
-    .join(', ')
-}
 
 export function QcSamplerPage() {
   const [project, setProject] = usePersistentState('qc.project', '')
@@ -26,10 +15,6 @@ export function QcSamplerPage() {
   const [perBox, setPerBox] = usePersistentState('qc.perBox', 5)
   const [seed, setSeed] = usePersistentState('qc.seed', '1')
   const [preferredFreezer, setPreferredFreezer] = usePersistentState('qc.preferredFreezer', '')
-  const [locationOverrides, setLocationOverrides] = usePersistentState<LocationOverrideMap>(
-    'qc.locationOverrides',
-    {}
-  )
   const [result, setResult] = usePersistentState<QcResult | null>('qc.result', null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +27,6 @@ export function QcSamplerPage() {
       perBox,
       seed: Number(seed.trim() || '1'),
       preferredFreezer: preferredFreezer.trim(),
-      locationOverrides,
       ...overrides,
     }
   }
@@ -68,12 +52,6 @@ export function QcSamplerPage() {
   function run(e: React.FormEvent) {
     e.preventDefault()
     void execute()
-  }
-
-  function applyLocation(box: string, location: LocationMap) {
-    const next = { ...locationOverrides, [box]: location }
-    setLocationOverrides(next)
-    void execute({ locationOverrides: next })
   }
 
   const missing = !project.trim() || !boxes.trim()
@@ -230,94 +208,10 @@ export function QcSamplerPage() {
             ))}
           </div>
 
-          {result.ambiguousBoxes.length > 0 && (
-            <div className="rounded-lg border border-warning-border bg-warning px-4 py-3">
-              <div className="flex flex-col gap-1">
-                <h2 className="font-title text-sm font-semibold text-foreground">
-                  Some boxes need disambiguation
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  QC sampling skipped boxes that appear in multiple positions. Add a
-                  preferred freezer or choose a specific candidate location below.
-                </p>
-              </div>
-
-              <div className="mt-3 flex flex-col gap-3">
-                {result.ambiguousBoxes.map((entry) => (
-                  <div
-                    key={`${entry.box}-${entry.status}`}
-                    className="rounded-md border border-border bg-card p-3"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="warning">box {entry.box}</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {entry.status === 'preferred_freezer_no_match'
-                          ? `No rows matched preferred freezer ${entry.preferred_freezer}.`
-                          : entry.status === 'ambiguous_in_preferred_freezer'
-                            ? `Preferred freezer ${entry.preferred_freezer} still has multiple positions.`
-                            : entry.status === 'location_override_no_match'
-                              ? 'The previously selected location no longer matches this box.'
-                              : 'This box appears in multiple positions.'}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex flex-col gap-2">
-                      {entry.locations.map((candidate, index) => {
-                        const isSelected =
-                          JSON.stringify(entry.selected_location ?? null) ===
-                          JSON.stringify(candidate.location)
-                        return (
-                          <div
-                            key={`${entry.box}-${index}`}
-                            className="grid gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"
-                          >
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
-                              {result.locationColumns.map((column) => (
-                                <span key={column}>
-                                  <span className="font-medium text-foreground">{column}</span>{' '}
-                                  {String(candidate.location[column] ?? '—')}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <Badge variant="outline" className="self-start">
-                                {candidate.count} tube{candidate.count === 1 ? '' : 's'}
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant={isSelected ? 'secondary' : 'outline'}
-                                className="shrink-0"
-                                onClick={() => applyLocation(entry.box, candidate.location)}
-                              >
-                                <MapPinned className="size-4" />
-                                Use this location
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-1.5">
-            {result.boxes
-              .filter((b) => b.location && b.sampled > 0)
-              .map((b) => (
-                <Badge key={`${b.box}-location`} variant="neutral">
-                  box {b.box} at {formatLocation(b.location, result.locationColumns)}
-                </Badge>
-              ))}
-          </div>
-
           <GlideTable
             columns={result.columns}
             rows={result.rows}
             groupBy="box"
-            defaultVisible={DEFAULT_VISIBLE}
             exportName={`qc_${project.trim() || 'sample'}_seed${result.seed}`}
           />
         </div>
