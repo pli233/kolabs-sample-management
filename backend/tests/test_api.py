@@ -1,4 +1,37 @@
+import io
+
 from app.schemas.main_library import MAIN_LIBRARY_COLUMNS
+from openpyxl import Workbook
+
+
+def _make_feed_row(record_id: int, cryobank: str, box: str, sample_pos: str, project: str = "L37") -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "main"
+    columns = list(MAIN_LIBRARY_COLUMNS)
+    ws.append(columns)
+    row = [None] * len(columns)
+    row[columns.index("record_id")] = record_id
+    row[columns.index("project")] = project
+    row[columns.index("cryobank")] = cryobank
+    row[columns.index("box")] = box
+    row[columns.index("sample_pos")] = sample_pos
+    ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _make_review_file(rows: list[list], columns: list[str]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "review"
+    ws.append(columns)
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 def _upload_sample(client, sample_xlsx_path):
@@ -215,3 +248,58 @@ def test_set_active_feed_missing_404(client):
 def test_missing_file_404(client):
     assert client.get("/api/files/9999").status_code == 404
     assert client.get("/api/files/9999/rows").status_code == 404
+
+
+def test_import_review_file_applies_flagged_scan_updates(client):
+    feed = _make_feed_row(1, "NTBI1", "716", "A01")
+    client.post(
+        "/api/files",
+        files={
+            "file": (
+                "feed.xlsx",
+                io.BytesIO(feed),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    review = _make_review_file(
+        [[1, "716", "A09", 1]],
+        ["record_id", "scanned_box", "scanned_position", "confirm_update"],
+    )
+    resp = client.post(
+        "/api/scan-reconcile/import-review",
+        files={
+            "file": (
+                "wrong_location_review.xlsx",
+                io.BytesIO(review),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"flagged": 1, "applied": 1}
+
+    active = client.get("/api/active-feed").json()["active"]
+    rows = client.get(f"/api/files/{active['id']}/rows?limit=5").json()
+    cols = rows["columns"]
+    box_i = cols.index("box")
+    pos_i = cols.index("sample_pos")
+    assert rows["rows"][0][box_i] == "716"
+    assert rows["rows"][0][pos_i] == "A09"
+
+
+def test_import_review_file_requires_confirm_and_scanned_columns(client):
+    review = _make_review_file([[1, "A09"]], ["record_id", "sample_pos"])
+    resp = client.post(
+        "/api/scan-reconcile/import-review",
+        files={
+            "file": (
+                "bad_review.xlsx",
+                io.BytesIO(review),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert resp.status_code == 400
+    assert "confirm_update" in resp.json()["detail"]

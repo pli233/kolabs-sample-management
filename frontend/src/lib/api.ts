@@ -193,6 +193,11 @@ export interface ScanResult {
   databaseColumns: string[]
 }
 
+export interface ReconcileReviewImportResult {
+  flagged: number
+  applied: number
+}
+
 export interface AliquotParams {
   ids: string
   preferredFreezer?: string
@@ -347,6 +352,17 @@ export const api = {
     })
     if (!resp.ok) throw new Error(`Export failed (${resp.status})`)
     saveBlob(await resp.blob(), 'scan_reconcile.xlsx')
+  },
+
+  async importReconcileReview(file: File): Promise<ReconcileReviewImportResult> {
+    const form = new FormData()
+    form.append('file', file)
+    return handle<ReconcileReviewImportResult>(
+      await fetch(`${API_BASE}/api/scan-reconcile/import-review`, {
+        method: 'POST',
+        body: form,
+      })
+    )
   },
 
   /** Reconcile fix: write a record's box/position in the active feed to the

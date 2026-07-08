@@ -138,6 +138,18 @@ def _apply_positions(items: list[ApplyPositionBody]) -> int:
     return applied
 
 
+def _first_present(index: dict[str, int], *names: str) -> int | None:
+    for name in names:
+        hit = index.get(name.lower())
+        if hit is not None:
+            return hit
+    return None
+
+
+def _confirmed(value) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "x"}
+
+
 @router.post("/reconcile/apply-position")
 def apply_position(body: ApplyPositionBody):
     """Reconcile fix for one record (write box/sample_pos to the active feed)."""
@@ -150,6 +162,79 @@ def apply_position(body: ApplyPositionBody):
 def apply_positions(body: ApplyPositionsBody):
     """Batch apply: write many records' box/sample_pos in one DB write."""
     return {"applied": _apply_positions(body.items)}
+
+
+@router.post("/scan-reconcile/import-review")
+async def import_scan_reconcile_review(file: UploadFile = File(...)):
+    """Apply reconcile updates from an exported review file.
+
+    The file must contain `confirm_update`, `record_id`, and scanned/scan
+    location columns. Rows with `confirm_update = 1` are written back into the
+    active feed.
+    """
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in {".xlsx", ".csv"}:
+        raise HTTPException(
+            status_code=415,
+            detail="Only exported .xlsx / .csv review files are supported",
+        )
+
+    data = await file.read()
+    if len(data) == 0:
+        raise HTTPException(status_code=422, detail="Empty file")
+
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        sheets = parsing.parse_file(tmp_path, ext)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail=f"Could not parse file: {exc}") from exc
+    finally:
+        os.unlink(tmp_path)
+
+    sheet = next((s for s in sheets if s["columns"] or s["rows"]), None)
+    if sheet is None:
+        raise HTTPException(status_code=422, detail="Review file has no readable rows")
+
+    columns = [str(c).strip() for c in sheet["columns"]]
+    idx = {column.lower(): i for i, column in enumerate(columns)}
+    record_i = _first_present(idx, "record_id", "db_record_id")
+    confirm_i = _first_present(idx, "confirm_update")
+    box_i = _first_present(idx, "scanned_box", "scan_box", "box")
+    pos_i = _first_present(idx, "scanned_position", "scan_position", "sample_pos", "position")
+
+    if record_i is None or confirm_i is None or box_i is None or pos_i is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Review file must include record_id, confirm_update, "
+                "and scanned_box/scanned_position columns"
+            ),
+        )
+
+    def cell(row: list, i: int | None):
+        return row[i] if i is not None and i < len(row) else None
+
+    flagged = 0
+    items: list[ApplyPositionBody] = []
+    for row in sheet["rows"]:
+        if not _confirmed(cell(row, confirm_i)):
+            continue
+        flagged += 1
+        record_id = cell(row, record_i)
+        if record_id in (None, ""):
+            continue
+        sample_pos = cell(row, pos_i)
+        items.append(
+            ApplyPositionBody(
+                record_id=record_id,
+                box=cell(row, box_i),
+                sample_pos=None if sample_pos in (None, "") else str(sample_pos).strip(),
+            )
+        )
+
+    return {"flagged": flagged, "applied": _apply_positions(items)}
 
 
 @router.post("/files")

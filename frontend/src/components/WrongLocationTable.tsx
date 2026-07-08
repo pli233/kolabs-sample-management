@@ -22,31 +22,61 @@ const DEDICATED = new Set([
 
 type Status = 'busy' | 'done' | 'error'
 
-/**
- * Wrong-location rows with the DB position (red) vs scanned position (blue).
- * "Apply to DB" writes the scanned location into the active feed. "Apply all"
- * does every row in one go. "Revoke" restores a row to its database location.
- */
-export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
+export function WrongLocationTable({
+  rows,
+  tubeCodeKey = 'tube_code',
+  projectKey = 'project',
+  dbBoxKey = 'expected_box',
+  dbPositionKey = 'expected_position',
+  scanBoxKey = 'box',
+  scanPositionKey = 'position',
+  extraExcluded = [],
+  summaryText = 'Apply writes the scanned location to the active feed.',
+}: {
+  rows: ScanRow[]
+  tubeCodeKey?: string
+  projectKey?: string
+  dbBoxKey?: string
+  dbPositionKey?: string
+  scanBoxKey?: string
+  scanPositionKey?: string
+  extraExcluded?: string[]
+  summaryText?: string
+}) {
   const [state, setState] = useState<Record<number, Status>>({})
   const [applyingAll, setApplyingAll] = useState(false)
 
   // Every other field present on the rows, in first-seen order.
   const extraCols = useMemo(
-    () =>
-      Array.from(
+    () => {
+      const dedicated = new Set([
+        ...DEDICATED,
+        tubeCodeKey,
+        projectKey,
+        dbBoxKey,
+        dbPositionKey,
+        scanBoxKey,
+        scanPositionKey,
+        ...extraExcluded,
+      ])
+      return Array.from(
         rows.reduce((set, r) => {
-          Object.keys(r).forEach((k) => !DEDICATED.has(k) && set.add(k))
+          Object.keys(r).forEach((k) => !dedicated.has(k) && set.add(k))
           return set
         }, new Set<string>())
-      ),
-    [rows]
+      )
+    },
+    [dbBoxKey, dbPositionKey, extraExcluded, projectKey, rows, scanBoxKey, scanPositionKey, tubeCodeKey]
   )
 
   async function apply(i: number, r: ScanRow) {
     setState((s) => ({ ...s, [i]: 'busy' }))
     try {
-      await api.applyPosition(r.record_id, r.box, String(r.position ?? ''))
+      await api.applyPosition(
+        r.record_id,
+        r[scanBoxKey],
+        String(r[scanPositionKey] ?? '')
+      )
       setState((s) => ({ ...s, [i]: 'done' }))
     } catch {
       setState((s) => ({ ...s, [i]: 'error' }))
@@ -59,8 +89,8 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
       // restore the database location
       await api.applyPosition(
         r.record_id,
-        r.expected_box,
-        String(r.expected_position ?? '')
+        r[dbBoxKey],
+        String(r[dbPositionKey] ?? '')
       )
       setState((s) => {
         const next = { ...s }
@@ -79,8 +109,8 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
       await api.applyPositions(
         rows.map((r) => ({
           recordId: r.record_id,
-          box: r.box,
-          samplePos: String(r.position ?? ''),
+          box: r[scanBoxKey],
+          samplePos: String(r[scanPositionKey] ?? ''),
         }))
       )
       setState(Object.fromEntries(rows.map((_, i) => [i, 'done' as Status])))
@@ -99,7 +129,7 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
         <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="destructive">DB location</Badge>
           <Badge variant="info">Scanned location</Badge>
-          <span>Apply writes the scanned location to the active feed.</span>
+          <span>{summaryText}</span>
         </p>
         <Button
           size="sm"
@@ -147,21 +177,21 @@ export function WrongLocationTable({ rows }: { rows: ScanRow[] }) {
                   key={i}
                   className={done ? 'bg-success-soft' : 'border-t border-border/60'}
                 >
-                  <td className="px-3 py-1.5 font-mono">{show(r.tube_code)}</td>
-                  <td className="px-3 py-1.5">{show(r.project)}</td>
+                  <td className="px-3 py-1.5 font-mono">{show(r[tubeCodeKey])}</td>
+                  <td className="px-3 py-1.5">{show(r[projectKey])}</td>
                   <td className="bg-destructive-soft/60 px-3 py-1.5 text-destructive">
-                    {show(r.expected_box)}
+                    {show(r[dbBoxKey])}
                   </td>
                   <td
                     className={`bg-destructive-soft/60 px-3 py-1.5 text-destructive ${done ? 'line-through opacity-60' : ''}`}
                   >
-                    {show(r.expected_position)}
+                    {show(r[dbPositionKey])}
                   </td>
                   <td className="bg-primary-subtle/70 px-3 py-1.5 text-primary">
-                    {show(r.box)}
+                    {show(r[scanBoxKey])}
                   </td>
                   <td className="bg-primary-subtle/70 px-3 py-1.5 font-medium text-primary">
-                    {show(r.position)}
+                    {show(r[scanPositionKey])}
                   </td>
                   {extraCols.map((c) => (
                     <td

@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { GlideTable } from '@/components/GlideTable'
 import { ExportMenu } from '@/components/ExportMenu'
 import { ScanDatabaseReviewTable } from '@/components/ScanDatabaseReviewTable'
-import { WrongLocationTable } from '@/components/WrongLocationTable'
 import { EmptyState, InlineError } from '@/components/Feedback'
 import { PageHeader } from '@/components/PageHeader'
 
@@ -16,7 +15,7 @@ const CATEGORIES: { key: keyof ScanResult; label: string }[] = [
   { key: 'scan_not_in_database', label: 'Scanned, not in database' },
   { key: 'wrong_location', label: 'Wrong location' },
   { key: 'database_not_in_scan', label: 'In database, not scanned' },
-  { key: 'position_conflicts', label: 'Position conflicts' },
+  { key: 'position_conflicts', label: 'DB slot conflicts' },
   { key: 'duplicate_scan_tubecodes', label: 'Duplicate scan codes' },
 ]
 
@@ -29,6 +28,36 @@ function toTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
     }, new Set<string>())
   )
   return { columns, rows: rows.map((r) => columns.map((c) => r[c])) }
+}
+
+function toPositionConflictTable(rows: ScanRow[]): { columns: string[]; rows: Cell[][] } {
+  const columns = [
+    'record_id',
+    'db_tube_code',
+    'db_project',
+    'db_box',
+    'db_position',
+    'scanned_tube_code',
+    'scanned_project',
+    'scanned_box',
+    'scanned_position',
+    'scanned_source',
+  ]
+  return {
+    columns,
+    rows: rows.map((row) => [
+      row.record_id ?? null,
+      row.expected_cryobank ?? null,
+      row.expected_project ?? null,
+      row.expected_box ?? null,
+      row.expected_position ?? null,
+      row.tube_code ?? null,
+      row.project ?? null,
+      row.box ?? null,
+      row.position ?? null,
+      row.source ?? null,
+    ]),
+  }
 }
 
 export function ScanReconcilePage() {
@@ -47,11 +76,21 @@ export function ScanReconcilePage() {
     ? [
         ...CATEGORIES.filter(
           ({ key }) => (result[key] as ScanRow[]).length > 0
-        ).map((c) => ({
-          id: c.key as string,
-          label: c.label,
-          count: (result[c.key] as ScanRow[]).length,
-        })),
+        ).map((c) => {
+          const issueCount = (result[c.key] as ScanRow[]).length
+          const reviewCount =
+            c.key === 'scan_not_in_database'
+              ? result.scan_not_in_database_review.length
+              : c.key === 'wrong_location'
+                ? result.wrong_location_review.length
+                : issueCount
+          return {
+            id: c.key as string,
+            label: c.label,
+            count: issueCount,
+            reviewCount,
+          }
+        }),
         ...(result.fileSummary.length > 1
           ? [{ id: 'files', label: 'Scan files', count: result.fileSummary.length }]
           : []),
@@ -76,6 +115,7 @@ export function ScanReconcilePage() {
     setError(null)
     try {
       setResult(await api.scanReconcile(files))
+      setTab('')
     } catch (err) {
       setError((err as Error).message)
       setResult(null)
@@ -217,6 +257,11 @@ export function ScanReconcilePage() {
                     <Badge
                       variant={activeTab?.id === t.id ? 'primary' : 'neutral'}
                       className="px-1.5"
+                      title={
+                        'reviewCount' in t && t.reviewCount !== t.count
+                          ? `${t.count} issue${t.count === 1 ? '' : 's'} expands to ${t.reviewCount} review rows`
+                          : undefined
+                      }
                     >
                       {t.count}
                     </Badge>
@@ -231,21 +276,55 @@ export function ScanReconcilePage() {
                   exportName="scan_files"
                 />
               ) : activeTab?.id === 'wrong_location' ? (
-                result.wrong_location_review.length > 0 ? (
-                  <ScanDatabaseReviewTable
-                    rows={result.wrong_location_review}
-                    databaseColumns={result.databaseColumns}
-                    mode="wrong_location"
-                  />
-                ) : (
-                  <WrongLocationTable rows={result.wrong_location} />
-                )
+                <ScanDatabaseReviewTable
+                  rows={result.wrong_location_review}
+                  databaseColumns={result.databaseColumns}
+                  mode="wrong_location"
+                  onImported={run}
+                />
               ) : activeTab?.id === 'scan_not_in_database' ? (
                 <ScanDatabaseReviewTable
                   rows={result.scan_not_in_database_review}
                   databaseColumns={result.databaseColumns}
                   mode="missing"
                 />
+              ) : activeTab?.id === 'position_conflicts' ? (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-lg border border-warning-border bg-warning px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning">DB slot conflict</Badge>
+                      <span className="text-sm text-foreground">
+                        <strong>Wrong location</strong> means the scanned tube code exists in
+                        the DB, but its DB box or position is different.{' '}
+                        <strong>DB slot conflict</strong> means the scanned box and position are
+                        already assigned to a different tube in the DB.
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      One scanned row can expand into many rows here when that same DB slot has
+                      multiple database records, so the table can grow well past the tab count.
+                    </p>
+                  </div>
+                  <ScanDatabaseReviewTable
+                    rows={result.position_conflicts.map((row) => ({
+                      record_id: row.record_id,
+                      db_tube_code: row.expected_cryobank,
+                      db_project: row.expected_project,
+                      db_box: row.expected_box,
+                      db_position: row.expected_position,
+                      scanned_tube_code: row.tube_code,
+                      scanned_project: row.project,
+                      scanned_box: row.box,
+                      scanned_position: row.position,
+                      scanned_source: row.source,
+                    }))}
+                    databaseColumns={[]}
+                    mode="slot_conflict"
+                    reviewColumns={toPositionConflictTable(result.position_conflicts).columns}
+                    exportName="slot_conflict_review"
+                    onImported={run}
+                  />
+                </div>
               ) : activeTab ? (
                 <GlideTable
                   {...toTable(result[activeTab.id as keyof ScanResult] as ScanRow[])}
